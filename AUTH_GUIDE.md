@@ -1,4 +1,4 @@
-# Sahad Stores — Authentication System Guide
+# Gimbiya Mall — Authentication System Guide
 ## MERN Stack · MongoDB · JWT · bcrypt · Rate Limiting
 
 ---
@@ -25,10 +25,10 @@ These accounts are seeded automatically when the server starts.
 
 | Role      | Email                      | Password         | Dashboard URL   |
 |-----------|----------------------------|------------------|-----------------|
-| Admin     | admin@sahadstores.com      | Admin@123456     | /admin          |
-| Manager   | manager@sahadstores.com    | Manager@123456   | /manager        |
-| Delivery  | delivery@sahadstores.com   | Delivery@123456  | /delivery       |
-| Developer | developer@sahadstores.com  | Developer@123456 | /developer      |
+| Admin     | admin@gimbiyamall.com      | Admin@Gimbiya26     | /admin          |
+| Manager   | manager@gimbiyamall.com    | Manager@Gimbiya26   | /manager        |
+| Delivery  | delivery@gimbiyamall.com   | Delivery@Gimbiya26  | /delivery       |
+| Developer | developer@gimbiyamall.com  | Dev@Gimbiya26 | /developer      |
 
 ### Buyer / Affiliate Roles (Shop Account tab)
 
@@ -66,7 +66,7 @@ server/_core/rateLimit.ts          ← Rate limiting middleware
 4. Checks MongoDB for duplicate email — throws if found
 5. Creates User document; Mongoose pre-save hook bcrypt-hashes the password
 6. Signs a JWT containing `{ userId, email, role, name }`
-7. Sets JWT as an httpOnly cookie (`sahad_session`)
+7. Sets JWT as an httpOnly cookie (`gimbiya_session`)
 8. Returns `{ success, message, role: "buyer" }`
 9. Frontend redirects to `/products`
 
@@ -92,7 +92,7 @@ server/_core/rateLimit.ts          ← Rate limiting middleware
 ### Session Verification (Every Request)
 
 1. `createContext()` runs on every tRPC request
-2. Reads `sahad_session` cookie from request headers
+2. Reads `gimbiya_session` cookie from request headers
 3. Calls `verifySessionToken()` — jose.jwtVerify with HS256
 4. Looks up user in MongoDB by `userId` from JWT payload
 5. Attaches user to `ctx.user` (or null for unauthenticated)
@@ -101,7 +101,7 @@ server/_core/rateLimit.ts          ← Rate limiting middleware
 ### Logout
 
 1. Frontend calls `trpc.auth.logout.mutate()`
-2. Server calls `res.clearCookie("sahad_session")`
+2. Server calls `res.clearCookie("gimbiya_session")`
 3. Frontend redirects to `/auth`
 
 ---
@@ -194,7 +194,7 @@ sudo systemctl start mongod             # Ubuntu
 
 # .env:
 MONGODB_URI=mongodb://localhost:27017/
-MONGODB_DB_NAME=sahad_stores
+MONGODB_DB_NAME=gimbiya_mall
 ```
 
 ---
@@ -220,7 +220,7 @@ pnpm remove mysql2 drizzle-orm drizzle-kit
 ```
 Algorithm: HS256
 Expiry: 1 year (configurable via options.expiresInMs)
-Cookie name: sahad_session
+Cookie name: gimbiya_session
 Cookie flags: httpOnly=true, secure=true (prod), sameSite=strict (prod)
 ```
 
