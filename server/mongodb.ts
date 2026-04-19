@@ -3,12 +3,13 @@
  *
  * ── Default Staff Login Credentials ─────────────────────────────────────────
  *
- *  Role        │ Email                       │ Password
+ *  Role          │ Email                       │ Password
  * ─────────────────────────────────────────────────────────────────────────────
- *  admin       │ admin@sahadstores.com        │ Admin@123456
- *  manager     │ manager@sahadstores.com      │ Manager@123456
- *  delivery    │ delivery@sahadstores.com     │ Delivery@123456
- *  developer   │ developer@sahadstores.com    │ Developer@123456
+ *  admin         │ admin@sahadstores.com        │ Admin@123456
+ *  manager       │ manager@sahadstores.com      │ Manager@123456
+ *  stock_manager │ stock@sahadstores.com        │ Stock@123456
+ *  delivery      │ delivery@sahadstores.com     │ Delivery@123456
+ *  developer     │ developer@sahadstores.com    │ Developer@123456
  * ─────────────────────────────────────────────────────────────────────────────
  *
  * Buyers register themselves at /auth.
@@ -31,7 +32,7 @@ export async function connectDB(): Promise<void> {
 
   try {
     await mongoose.connect(mongoUri, {
-      dbName: process.env.MONGODB_DB_NAME || "sahad_stores",
+      dbName: process.env.MONGODB_DB_NAME || "gimbiya_mall",
     });
     isConnected = true;
     console.log("[MongoDB] Connected successfully");
@@ -55,10 +56,11 @@ async function seedStaffAccounts() {
   const { User } = await import("./models/User");
 
   const staff = [
-    { name: "Admin User",      email: "admin@sahadstores.com",    password: "Admin@123456",    role: "admin"     as const },
-    { name: "Manager User",    email: "manager@sahadstores.com",  password: "Manager@123456",  role: "manager"   as const },
-    { name: "Delivery Rider",  email: "delivery@sahadstores.com", password: "Delivery@123456", role: "delivery"  as const },
-    { name: "Developer User",  email: "developer@sahadstores.com",password: "Developer@123456",role: "developer" as const },
+    { name: "Admin User",      email: "admin@sahadstores.com",    password: "Admin@123456",    role: "admin"         as const },
+    { name: "Manager User",    email: "manager@sahadstores.com",  password: "Manager@123456",  role: "manager"       as const },
+    { name: "Stock Manager",   email: "stock@sahadstores.com",    password: "Stock@123456",    role: "stock_manager" as const },
+    { name: "Delivery Rider",  email: "delivery@sahadstores.com", password: "Delivery@123456", role: "delivery"      as const },
+    { name: "Developer User",  email: "developer@sahadstores.com",password: "Developer@123456",role: "developer"     as const },
   ];
 
   for (const s of staff) {

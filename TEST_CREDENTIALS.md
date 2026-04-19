@@ -1,62 +1,42 @@
-# Sahad Stores — Login Credentials
+# Gimbiya Mall — Quick Test Credentials
 
-All staff accounts are **automatically seeded into MongoDB** when the server
-starts for the first time (`server/mongodb.ts → seedStaffAccounts`).
+Copy-paste these to test each role dashboard in the DEMO.
 
----
+## Staff (Staff Portal tab at /auth)
 
-## Staff Portal  (`/auth` → "Staff Portal" tab)
+```
+Developer   developer@sahadstores.com   Developer@123456
+Admin       admin@sahadstores.com       Admin@123456
+Manager     manager@sahadstores.com     Manager@123456
+StockMgr    stock@sahadstores.com       Stock@123456
+Delivery    delivery@sahadstores.com    Delivery@123456
+```
 
-| Role | Email | Password | Dashboard |
-|------|-------|----------|-----------|
-| **Admin** | `admin@sahadstores.com` | `Admin@123456` | `/admin` |
-| **Manager** | `manager@sahadstores.com` | `Manager@123456` | `/manager` |
-| **Delivery** | `delivery@sahadstores.com` | `Delivery@123456` | `/delivery` |
-| **Developer** | `developer@sahadstores.com` | `Developer@123456` | `/developer` |
+## Buyer (Shop Account tab at /auth)
 
-> Staff accounts are created in MongoDB at startup. You can also click the
-> quick-login cards on the Staff Portal tab to log in instantly.
+Register any email. Then:
+- Stay as **buyer** to shop.
+- Ask admin to enable affiliate → becomes **reader**.
 
----
+## Demo Navigator Paths
 
-## Shop Account  (`/auth` → "Shop Account" tab)
+| Role          | URL                    |
+|---------------|------------------------|
+| Home          | /                      |
+| Products      | /products              |
+| Buyer         | /buyer                 |
+| Admin         | /admin                 |
+| Manager       | /manager               |
+| Stock Manager | /stock-manager         |
+| Delivery      | /delivery              |
+| Affiliate     | /affiliate             |
+| Developer     | /developer             |
 
-| Role | How to get it |
-|------|---------------|
-| **Buyer** | Sign up with any email + password on the Shop Account tab |
-| **Affiliate (Reader)** | Admin promotes a buyer to affiliate from the User Management panel |
+## Stock Manager Sub-pages
 
----
-
-## Role Permissions Summary
-
-| Feature | Admin | Manager | Delivery | Developer | Buyer | Affiliate |
-|---------|:-----:|:-------:|:--------:|:---------:|:-----:|:---------:|
-| View platform stats | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ |
-| Manage users / roles | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Sales analytics | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ |
-| Create / edit products | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Manage inventory | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Manage categories | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| View & update delivery orders | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
-| Shop / place orders | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
-| View referral earnings | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
-
----
-
-## Password Policy (Buyers)
-
-When signing up as a buyer, passwords must:
-- Be **at least 8 characters** long
-- Contain **at least one uppercase letter**
-- Contain **at least one number**
-
----
-
-## Security Notes
-
-- Passwords are hashed with **bcrypt** (12 salt rounds) — never stored in plain text.
-- Sessions use **HS256 JWT** stored in an `httpOnly` cookie.
-- Auth endpoints are **rate-limited** to 10 requests per 15 minutes per IP.
-- The buyer login and staff login are **separate endpoints** — each rejects the wrong role.
-- Generic "Invalid email or password" messages prevent **email enumeration**.
+| Page              | URL                          |
+|-------------------|------------------------------|
+| Dashboard         | /stock-manager               |
+| Adjust Stock      | /stock-manager/adjust        |
+| Low Stock Alerts  | /stock-manager/low-stock     |
+| Inventory History | /stock-manager/history       |

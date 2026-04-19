@@ -7,7 +7,7 @@ import { parse as parseCookieHeader } from "cookie";
 import type { Request } from "express";
 import type { IUser } from "../models/User";
 
-export const COOKIE_NAME = "sahad_session";
+export const COOKIE_NAME = "gimbiya_session";
 const ONE_YEAR_MS = 1000 * 60 * 60 * 24 * 365;
 
 function getSecretKey(): Uint8Array {

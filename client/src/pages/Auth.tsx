@@ -69,7 +69,7 @@ export default function Auth() {
     onError: (e) => toast.error(e.message || "Login failed"),
   });
   const signupBuyer = trpc.auth.signupBuyer.useMutation({
-    onSuccess: () => { toast.success("Account created! Welcome to Sahad Stores."); setTimeout(() => navigate("/products"), 600); },
+    onSuccess: () => { toast.success("Account created! Welcome to Gimbiya Mall."); setTimeout(() => navigate("/products"), 600); },
     onError: (e) => toast.error(e.message || "Signup failed"),
   });
   const loginStaff = trpc.auth.loginStaff.useMutation({
@@ -114,7 +114,7 @@ export default function Auth() {
             <div style={{ width: 30, height: 30, background: "linear-gradient(135deg,#e8a020,#f5c842)", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>
               <ShoppingBag size={14} color="#0b1628" />
             </div>
-            <span style={{ color: "#fff", fontWeight: 700, fontSize: 15 }}>Sahad Stores</span>
+            <span style={{ color: "#fff", fontWeight: 700, fontSize: 15 }}>Gimbiya Mall</span>
           </div>
         </div>
         <div style={{ fontSize: 13, color: "rgba(255,255,255,0.35)" }}>
@@ -150,7 +150,7 @@ export default function Auth() {
             <div style={{ animation: "fadeUp 0.3s ease both" }}>
               <div style={{ textAlign: "center", marginBottom: 32 }}>
                 <h1 style={{ color: "#fff", fontSize: 28, fontWeight: 800, marginBottom: 8, letterSpacing: "-0.02em" }}>Welcome back</h1>
-                <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 15 }}>Sign in to your Sahad Stores account</p>
+                <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 15 }}>Sign in to your Gimbiya Mall account</p>
               </div>
               <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
                 <div>
@@ -201,7 +201,7 @@ export default function Auth() {
             <div style={{ animation: "fadeUp 0.3s ease both" }}>
               <div style={{ textAlign: "center", marginBottom: 32 }}>
                 <h1 style={{ color: "#fff", fontSize: 28, fontWeight: 800, marginBottom: 8, letterSpacing: "-0.02em" }}>Create your account</h1>
-                <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 15 }}>Join Sahad Stores and start shopping today</p>
+                <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 15 }}>Join Gimbiya Mall and start shopping today</p>
               </div>
               <form onSubmit={handleSignup} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                 <div>
@@ -368,7 +368,7 @@ export default function Auth() {
 
       {/* Footer */}
       <div style={{ padding: "14px 24px", textAlign: "center", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
-        <p style={{ color: "rgba(255,255,255,0.15)", fontSize: 12 }}>© 2026 Sahad Stores · Secure authentication</p>
+        <p style={{ color: "rgba(255,255,255,0.15)", fontSize: 12 }}>© 2026 Gimbiya Mall · Secure authentication</p>
       </div>
     </div>
   );

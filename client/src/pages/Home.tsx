@@ -1,5 +1,5 @@
 /**
- * Home.tsx — Sahad Stores Landing Page
+ * Home.tsx — Gimbiya Mall Landing Page
  *
  * Fully self-contained styling using Tailwind utility classes only.
  * No external images needed — uses inline SVG backgrounds and CSS gradients.
@@ -140,7 +140,7 @@ export default function Home() {
                 <ShoppingBag className="w-5 h-5 text-white" />
               </div>
               <div>
-                <span className="text-xl font-bold text-slate-900">Sahad</span>
+                <span className="text-xl font-bold text-slate-900">Gimbiya Mall</span>
                 <span className="text-xl font-bold text-blue-600"> Stores</span>
               </div>
             </div>
@@ -212,7 +212,7 @@ export default function Home() {
             </h1>
 
             <p className="text-lg sm:text-xl text-slate-300 leading-relaxed max-w-2xl mx-auto mb-10">
-              Sahad Stores connects buyers, managers, admins, delivery riders,
+              Gimbiya Mall connects buyers, managers, admins, delivery riders,
               affiliates and developers in one seamless commerce ecosystem.
               Powered by Monnify payments and real-time GPS tracking.
             </p>
@@ -328,7 +328,7 @@ export default function Home() {
               <CheckCircle className="w-4 h-4" /> Platform Capabilities
             </div>
             <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4">
-              Why Choose Sahad Stores?
+              Why Choose Gimbiya Mall?
             </h2>
             <p className="text-slate-500 text-lg max-w-2xl mx-auto">
               Everything you need to run a professional Nigerian e-commerce operation, out of the box.
@@ -486,7 +486,7 @@ export default function Home() {
             Transform Your E-Commerce Business Today
           </h2>
           <p className="text-blue-100 text-lg mb-10 max-w-2xl mx-auto">
-            Join Sahad Stores and give every person in your business the exact
+            Join Gimbiya Mall and give every person in your business the exact
             tools they need — buyers, staff, delivery and affiliates, all in one place.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -515,7 +515,7 @@ export default function Home() {
               <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
                 <ShoppingBag className="w-4 h-4 text-white" />
               </div>
-              <span className="text-white font-bold text-lg">Sahad Stores</span>
+              <span className="text-white font-bold text-lg">Gimbiya Mall</span>
             </div>
 
             {/* Links */}
@@ -527,7 +527,7 @@ export default function Home() {
             </div>
 
             {/* Copyright */}
-            <p className="text-sm">&copy; 2026 Sahad Stores. All rights reserved.</p>
+            <p className="text-sm">&copy; 2026 Gimbiya Mall. All rights reserved.</p>
           </div>
         </div>
       </footer>
