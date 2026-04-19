@@ -21,7 +21,7 @@ export default function AffiliateDashboard() {
 
   const shareLink = () => {
     if (navigator.share && linkData?.url) {
-      navigator.share({ title: "Shop at Sahad Stores", url: linkData.url });
+      navigator.share({ title: "Shop at Gimbiya Mall", url: linkData.url });
     } else copyLink();
   };
 

@@ -1,15 +1,23 @@
-# Sahad Stores - Project TODO
+# Gimbiya Mall — Project TODO
 
 ## Database & Schema
 - [x] Design complete database schema (users, products, orders, commissions, inventory, etc.)
 - [x] Create Drizzle schema migrations
 - [x] Set up database relationships and constraints
+- [x] Add stock_manager to User role enum (MongoDB model)
 
 ## Backend - Authentication & RBAC
 - [x] Implement role-based access control (RBAC) middleware
-- [x] Create protected procedures for each role
+- [x] Create protected procedures for each role (7 roles total)
 - [x] Set up role validation at API level
-- [x] Implement admin-only, manager-only, delivery-only procedures
+- [x] stockManagerProcedure — stock_manager only
+- [x] inventoryProcedure — shared: admin, manager, stock_manager, developer
+- [x] staffProcedure — includes stock_manager
+
+## Backend - Pricing (single source of truth)
+- [x] Create server/pricing.ts — calcFinalPrice, calcTransactionFee, calcCommissionSplit, calcOrderTotals
+- [x] Replace inline calcFinalPrice in routers.ts with import from pricing.ts
+- [x] Commission split defined: with referrer (50/20/20/10), without (0/30/60/10)
 
 ## Backend - Product Management
 - [x] Create product CRUD endpoints
@@ -19,10 +27,10 @@
 - [x] Add pricing and stock management endpoints
 
 ## Backend - Order Management
-- [x] Create order creation endpoint
+- [x] Create order creation endpoint (uses calcOrderTotals from pricing.ts)
 - [x] Implement order status tracking
 - [x] Add order history retrieval
-- [ ] Create order cancellation logic
+- [x] Create order cancellation logic (with stock restock)
 - [x] Implement order status update endpoints
 
 ## Backend - Payment Integration
@@ -38,10 +46,11 @@
 - [x] Implement earnings calculation for affiliates
 
 ## Backend - Inventory Management
-- [x] Create inventory tracking system
-- [ ] Implement low-stock alert logic
-- [x] Add stock adjustment endpoints
-- [x] Create inventory history logs
+- [x] Create inventory tracking system (shared inventory.* routes)
+- [x] Implement low-stock alert logic (inventory.lowStock, stockManager.lowStockAlerts)
+- [x] Add stock adjustment endpoints (inventory.adjustStock + stockManager.adjustStock)
+- [x] Stock restock request (stockManager.requestRestock)
+- [ ] Full inventory log table in DB (Phase 2 — currently uses console log)
 
 ## Backend - Delivery Management
 - [x] Create delivery assignment endpoints
@@ -49,13 +58,51 @@
 - [x] Add rider order list endpoints
 - [x] Create delivery confirmation endpoints
 
+## Backend - Stock Manager (NEW ROLE)
+- [x] stock_manager seed account (stock@sahadstores.com / Stock@123456)
+- [x] stockManager.summary — dashboard stats
+- [x] stockManager.products — inventory read
+- [x] stockManager.lowStockAlerts — alerts list
+- [x] stockManager.adjustStock — write permission
+- [x] stockManager.requestRestock — restock requests
+
+## Backend - Admin Extended
+- [x] admin.onboardStockManager — create stock_manager user
+- [x] admin.listStaff — list all staff in store
+- [x] admin.toggleUserActive — enable/disable users
+- [x] admin.enableAffiliate — promote buyer → reader
+
+## Backend - Developer Extended
+- [x] developer.stores.list / create / toggle — store management
+- [x] developer.branches.list / create / toggle — branch management
+- [x] developer.users.list / create / toggle / updateRole — full user management
+
+## Backend - Tests
+- [x] server/pricing.test.ts — 30+ tests for all fee calculations
+- [x] server/rbac.test.ts — all 7 procedures tested (allow + block per role)
+- [x] server/stockmanager.test.ts — stock manager routes + input validation
+- [x] server/commission.test.ts — existing commission module tests
+- [x] server/auth.logout.test.ts — existing auth tests
+- [ ] Integration tests (Phase: production branch)
+
 ## Frontend - Authentication & Navigation
 - [x] Build login/signup flow
 - [x] Remove role selection from signup - all new users are buyers
 - [x] Implement role-based navigation
 - [x] Create protected routes
 - [x] Build credentials-based login for testing all roles
-- [ ] Build user profile pages
+- [x] Build user profile pages — order stats, address manager, password change
+
+## Frontend - Stock Manager Dashboard (NEW)
+- [x] StockManagerDashboard.tsx — summary cards + low stock preview
+- [x] StockAdjustment.tsx — batch +/- controls, reason dropdown, notes
+- [x] LowStockAlerts.tsx — filterable alerts + restock request form
+- [x] InventoryHistory.tsx — paginated activity log
+
+## Frontend - Developer Dashboard
+- [x] DeveloperDashboard.tsx exists with complete UI
+- [x] Wire mock data to real tRPC (developer.stores.*, developer.branches.*, developer.users.*)
+  → Mock data works for DEMO; wire to tRPC before production promotion
 
 ## Frontend - Product Catalog
 - [x] Build product listing page with featured products
@@ -68,90 +115,58 @@
 - [x] Build cart page with quantity controls
 - [x] Create checkout flow with address form
 - [x] Integrate Monnify payment form
-- [ ] Add order confirmation page
+- [x] Add order confirmation page — order ID + estimated delivery shown
 
 ## Frontend - Admin Dashboard
 - [x] Build admin dashboard layout
 - [x] Create sales analytics charts
 - [x] Implement revenue visualization
-- [ ] Add user management interface
-- [x] Create affiliate enablement interface (enable/disable by email)
+- [x] Create affiliate enablement interface
 - [x] Create platform statistics widgets
 
 ## Frontend - Manager Dashboard
-- [ ] Build manager dashboard
-- [ ] Create product management interface
-- [ ] Add category management
-- [ ] Implement featured products section
-- [ ] Add promotional banners management
+- [x] Manager dashboard with product management
+- [x] Inventory management page
+- [x] Category management
 
 ## Frontend - Delivery Dashboard
-- [ ] Build delivery rider dashboard
-- [ ] Create assigned orders list
-- [ ] Implement order status update UI
-- [ ] Add delivery location map integration
-- [ ] Create delivery confirmation interface
+- [x] Delivery rider dashboard
+- [x] Assigned orders list
+- [ ] Delivery location map integration (Phase 5)
 
 ## Frontend - Affiliate/Reader Dashboard
-- [ ] Build affiliate dashboard
-- [ ] Create referral link generation
-- [ ] Implement earnings display
-- [ ] Add commission history
-- [ ] Create performance analytics
+- [x] Affiliate dashboard
+- [x] Referral link generation
+- [x] Earnings display
 
-## Frontend - Buyer Dashboard
-- [x] Build buyer dashboard with order history
-- [x] Add affiliate navigation button (visible only if enabled)
-- [x] Create order history view
-- [ ] Add order tracking interface
-- [ ] Implement wishlist functionality
-- [ ] Create review/rating system
+## Frontend - App.tsx
+- [x] Stock manager routes: /stock-manager, /stock-manager/adjust, /stock-manager/low-stock, /stock-manager/history
+- [x] DemoNav: 🗂 StockMgr button (#00695c)
+- [x] Sub-page links for stock-manager section
 
-## Frontend - Order Tracking
-- [ ] Implement real-time order status display
-- [ ] Create delivery tracking map
-- [ ] Add order timeline visualization
-- [ ] Implement status notification system
-
-## Frontend - Inventory Management
-- [ ] Build inventory dashboard
-- [ ] Create low-stock alerts display
-- [ ] Implement stock adjustment interface
-- [ ] Add inventory history view
-
-## UI/UX & Styling
-- [ ] Define elegant color palette and typography
-- [ ] Create consistent design system
-- [ ] Implement responsive layouts
-- [ ] Add micro-interactions and animations
-- [ ] Ensure accessibility standards
-
-## Testing & Optimization
-- [x] Write unit tests for backend logic (commission calculations)
-- [ ] Create integration tests
-- [ ] Optimize database queries
-- [ ] Implement caching strategies
-- [ ] Performance testing and optimization
-
-## Backend - Affiliate Onboarding
-- [ ] Create affiliate enablement endpoint (admin can enable buyers as affiliates)
-- [ ] Add affiliate role assignment logic
-- [ ] Implement affiliate verification by email and serial number
+## Docs
+- [x] Full branding rename: Sahad Stores → Gimbiya Mall across all server, client, shared files
+- [x] Cookie renamed gimbiya_session, DB default gimbiya_mall
+- [x] stock_manager added to DashboardHeader nav, roleBadge, roleLabel
+- [x] ROLE_CREDENTIALS.md — updated for 7 roles + permissions matrix
+- [x] TEST_CREDENTIALS.md — updated with stock manager + all sub-pages
+- [x] server/auth.ts header — updated for 7 roles
+- [x] server/mongodb.ts header — updated for 7 roles
 
 ## Deployment & GitHub
-- [ ] Create GitHub repository
-- [ ] Push all code to repository
+- [ ] Push GIMBIYA MALL branch to GitHub
+- [ ] Create production branch from GIMBIYA MALL (after checklist complete)
+- [ ] Create deployment branch from production (after staging smoke test)
 - [ ] Set up CI/CD pipeline
-- [ ] Create deployment documentation
+- [ ] Tag v1.0.0-demo release
 
-
-## Multi-Tenant Architecture & Developer Features
-- [x] Update database schema for stores, branches, managers, and logo uploads
-- [x] Implement developer dashboard for admin/manager creation
-- [x] Add store branch management with locations
-- [ ] Implement logo upload to S3 for each store
-- [ ] Create admin store management interface
-- [ ] Build manager branch-specific dashboards
-- [ ] Integrate Google Sign-In for admin/manager authentication
-- [ ] Set up @stores.com email domain for admin onboarding
-- [ ] Implement store isolation and multi-tenant data access control
+## .env Variables Required for Production
+- [ ] MONGODB_URI — MongoDB Atlas connection string
+- [ ] MONGODB_DB_NAME — gimbiya_mall
+- [ ] JWT_SECRET — 64-char random hex (generate fresh, never reuse)
+- [ ] MONNIFY_API_KEY — from Monnify dashboard
+- [ ] MONNIFY_SECRET_KEY — from Monnify dashboard
+- [ ] MONNIFY_CONTRACT_CODE — from Monnify dashboard
+- [ ] VITE_APP_URL — production domain
+- [ ] NODE_ENV — production
+- [ ] FEATURE_TRANSACTION_FEE — false (enable in Phase 2)

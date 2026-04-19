@@ -56,7 +56,7 @@ async function startServer() {
   if (port !== preferredPort) console.log(`Port ${preferredPort} busy, using ${port}`);
 
   server.listen(port, () => {
-    console.log(`\n🛍️  Sahad Stores → http://localhost:${port}/`);
+    console.log(`\n🛍️  Gimbiya Mall → http://localhost:${port}/`);
     console.log(`📦  API         → http://localhost:${port}/api/trpc`);
     console.log(`\n👤  Staff Login Credentials:`);
     console.log(`   admin       admin@sahadstores.com      Admin@123456`);

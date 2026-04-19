@@ -269,7 +269,7 @@ export default function BuyerDashboard() {
                     Become an Affiliate
                   </CardTitle>
                   <CardDescription>
-                    Earn commissions by referring customers to Sahad Stores
+                    Earn commissions by referring customers to Gimbiya Mall
                   </CardDescription>
                 </CardHeader>
                 <CardContent>

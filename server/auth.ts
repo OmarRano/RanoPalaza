@@ -3,14 +3,15 @@
  *
  * ── Role Login Details ───────────────────────────────────────────────────────
  *
- *  Role        │ Email                       │ Password         │ Access
+ *  Role          │ Email                       │ Password         │ Access
  * ─────────────────────────────────────────────────────────────────────────────
- *  admin       │ admin@sahadstores.com        │ Admin@123456     │ Staff Portal
- *  manager     │ manager@sahadstores.com      │ Manager@123456   │ Staff Portal
- *  delivery    │ delivery@sahadstores.com     │ Delivery@123456  │ Staff Portal
- *  developer   │ developer@sahadstores.com    │ Developer@123456 │ Staff Portal
- *  buyer       │ (self-registered)            │ (own password)   │ Shop Account
- *  reader      │ (promoted from buyer)        │ (own password)   │ Shop Account
+ *  developer     │ developer@sahadstores.com   │ Developer@123456 │ Staff Portal
+ *  admin         │ admin@sahadstores.com        │ Admin@123456     │ Staff Portal
+ *  manager       │ manager@sahadstores.com      │ Manager@123456   │ Staff Portal
+ *  stock_manager │ stock@sahadstores.com        │ Stock@123456     │ Staff Portal
+ *  delivery      │ delivery@sahadstores.com     │ Delivery@123456  │ Staff Portal
+ *  buyer         │ (self-registered)            │ (own password)   │ Shop Account
+ *  reader        │ (promoted from buyer)        │ (own password)   │ Shop Account
  * ─────────────────────────────────────────────────────────────────────────────
  *
  * Staff accounts are seeded into MongoDB at server startup (server/mongodb.ts).
@@ -101,7 +102,7 @@ export const authRouter = router({
 
       return {
         success: true,
-        message: "Account created successfully! Welcome to Sahad Stores.",
+        message: "Account created successfully! Welcome to Gimbiya Mall.",
         role: "buyer",
       };
     }),

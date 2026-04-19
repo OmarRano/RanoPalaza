@@ -52,20 +52,27 @@ import ReferralManagement from "@/pages/affiliate/ReferralManagement";
 import DeveloperDashboard from "@/pages/developer/DeveloperDashboard";
 import PlatformAnalytics  from "@/pages/developer/PlatformAnalytics";
 
+// Stock Manager
+import StockManagerDashboard from "@/pages/stockmanager/StockManagerDashboard";
+import StockAdjustment       from "@/pages/stockmanager/StockAdjustment";
+import LowStockAlerts        from "@/pages/stockmanager/LowStockAlerts";
+import InventoryHistory      from "@/pages/stockmanager/InventoryHistory";
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Demo Navigator — floating bar at bottom of every page
 // Click any button to jump straight to that role's dashboard
 // ─────────────────────────────────────────────────────────────────────────────
 
 const ROLES = [
-  { label: "🏠 Home",       path: "/",           color: "#475569" },
-  { label: "🛍 Products",   path: "/products",    color: "#0891b2" },
-  { label: "🛒 Buyer",      path: "/buyer",       color: "#2563eb" },
-  { label: "🛡 Admin",      path: "/admin",       color: "#dc2626" },
-  { label: "📦 Manager",    path: "/manager",     color: "#d97706" },
-  { label: "🚚 Delivery",   path: "/delivery",    color: "#16a34a" },
-  { label: "🔗 Affiliate",  path: "/affiliate",   color: "#9333ea" },
-  { label: "💻 Developer",  path: "/developer",   color: "#4f46e5" },
+  { label: "🏠 Home",       path: "/",               color: "#475569" },
+  { label: "🛍 Products",   path: "/products",        color: "#0891b2" },
+  { label: "🛒 Buyer",      path: "/buyer",           color: "#2563eb" },
+  { label: "🛡 Admin",      path: "/admin",           color: "#dc2626" },
+  { label: "📦 Manager",    path: "/manager",         color: "#d97706" },
+  { label: "🗂 StockMgr",   path: "/stock-manager",   color: "#00695c" },
+  { label: "🚚 Delivery",   path: "/delivery",        color: "#16a34a" },
+  { label: "🔗 Affiliate",  path: "/affiliate",       color: "#9333ea" },
+  { label: "💻 Developer",  path: "/developer",       color: "#4f46e5" },
 ];
 
 const SUB: Record<string, { label: string; path: string }[]> = {
@@ -75,8 +82,9 @@ const SUB: Record<string, { label: string; path: string }[]> = {
   checkout:   [{ label: "Cart", path: "/cart" }, { label: "Orders", path: "/orders" }, { label: "Checkout", path: "/checkout" }, { label: "Profile", path: "/profile" }],
   profile:    [{ label: "Cart", path: "/cart" }, { label: "Orders", path: "/orders" }, { label: "Checkout", path: "/checkout" }, { label: "Profile", path: "/profile" }],
   admin:      [{ label: "Users", path: "/admin/users" }, { label: "Analytics", path: "/admin/analytics" }, { label: "Affiliates", path: "/admin/affiliates" }],
-  manager:    [{ label: "Products", path: "/manager/products" }, { label: "Inventory", path: "/manager/inventory" }, { label: "Categories", path: "/manager/categories" }],
-  delivery:   [{ label: "Orders", path: "/delivery/orders" }],
+  manager:        [{ label: "Products", path: "/manager/products" }, { label: "Inventory", path: "/manager/inventory" }, { label: "Categories", path: "/manager/categories" }],
+  "stock-manager":[{ label: "Adjust Stock", path: "/stock-manager/adjust" }, { label: "Low Stock", path: "/stock-manager/low-stock" }, { label: "History", path: "/stock-manager/history" }],
+  delivery:       [{ label: "Orders", path: "/delivery/orders" }],
   affiliate:  [{ label: "Referrals", path: "/affiliate/referrals" }, { label: "Earnings", path: "/affiliate/earnings" }],
   developer:  [{ label: "Analytics", path: "/developer/analytics" }],
 };
@@ -192,6 +200,12 @@ export default function App() {
           {/* Developer */}
           <Route path="/developer">           <DeveloperDashboard /></Route>
           <Route path="/developer/analytics"> <PlatformAnalytics /></Route>
+
+          {/* Stock Manager */}
+          <Route path="/stock-manager">             <StockManagerDashboard /></Route>
+          <Route path="/stock-manager/adjust">      <StockAdjustment /></Route>
+          <Route path="/stock-manager/low-stock">   <LowStockAlerts /></Route>
+          <Route path="/stock-manager/history">     <InventoryHistory /></Route>
 
           {/* 404 */}
           <Route component={NotFound} />

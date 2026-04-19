@@ -1,4 +1,4 @@
-# Sahad Stores — Startup Guide
+# Gimbiya Mall — Startup Guide
 
 ## Quick Start — Two Options
 
@@ -10,7 +10,7 @@ The fastest way to see the full platform. No MongoDB, no backend required.
 
 ```bash
 # 1. Enter project root
-cd shopspace-final2
+cd RanoPalaza-Gimbiya-Mall
 
 # 2. Install dependencies
 pnpm install
@@ -21,137 +21,116 @@ pnpm run dev:ui
 
 Open **http://localhost:5173**
 
-Every page is open. Use the **Demo Navigator bar** at the bottom to jump between all 8 role dashboards.
+Every page is open. Use the **Demo Navigator bar** at the bottom to jump between all 9 role dashboards.
 
 ---
 
 ### Option B: Full Stack (Frontend + Backend + MongoDB)
 
 ```bash
-# 1. Set up MongoDB (one of three ways)
+# 1. Copy environment file
+cp .env.example .env       # then fill in MONGODB_URI and JWT_SECRET
 
-# Docker:
-docker run -d -p 27017:27017 --name sahad-mongo mongo:7
-
-# Atlas (cloud): edit .env → MONGODB_URI=mongodb+srv://...
-
-# Local MongoDB: make sure mongod is running
-
-# 2. Install and start
+# 2. Install dependencies
 pnpm install
+
+# 3. Start full stack (frontend + backend)
 pnpm dev
 ```
 
-Open **http://localhost:3000**
+Open **http://localhost:5173** (frontend) and **http://localhost:3000** (API).
 
-Staff accounts are seeded automatically on first run.
+Staff accounts are seeded automatically on first connection to MongoDB.
 
 ---
 
-## Project Structure
+## Environment Variables (.env)
 
-```
-shopspace-final2/              ← PROJECT ROOT — run all commands from here
-├── client/                    ← Frontend (React + Vite + Tailwind v4)
-│   ├── index.html
-│   └── src/
-│       ├── App.tsx            ← Router + Demo Navigator bar
-│       ├── main.tsx           ← React entry point
-│       ├── index.css          ← Tailwind v4 + design tokens
-│       ├── lib/trpc.ts        ← DEMO: mock tRPC with real data shapes
-│       ├── _core/hooks/
-│       │   └── useAuth.ts     ← DEMO: mock user per route
-│       ├── pages/             ← 22 pages across 6 role groups
-│       └── components/
-│           └── DashboardHeader.tsx
-├── server/                    ← Backend (Express + tRPC + MongoDB)
-│   ├── _core/index.ts         ← Server entry point
-│   ├── routers.ts             ← All tRPC routes
-│   ├── auth.ts                ← Login / signup / logout
-│   └── models/                ← Mongoose schemas
-├── shared/const.ts            ← Shared constants
-├── vite.config.ts             ← ONE config at root (no client/vite.config.ts)
-├── package.json               ← ONE package.json at root (no client/package.json)
-└── .env                       ← Environment variables
+```env
+# Required for backend
+MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net
+MONGODB_DB_NAME=gimbiya_mall
+JWT_SECRET=<64-char random hex — generate with: openssl rand -hex 32>
+
+# Required for payments (Phase 2)
+MONNIFY_API_KEY=
+MONNIFY_SECRET_KEY=
+MONNIFY_CONTRACT_CODE=
+
+# Required for referral links
+VITE_APP_URL=http://localhost:5173
+
+# Production only
+NODE_ENV=production
+
+# Feature flags (enable per phase)
+FEATURE_TRANSACTION_FEE=false
 ```
 
 ---
 
-## All URLs (Demo Mode — No Login Required)
+## 9-Role Demo Credentials
 
-| URL | Role | Page |
-|-----|------|------|
-| `/` | — | Landing page |
-| `/products` | — | Product catalog (8 products) |
-| `/buyer` | Buyer | Dashboard |
-| `/cart` | Buyer | Shopping cart |
-| `/checkout` | Buyer | Checkout |
-| `/orders` | Buyer | Order history |
-| `/profile` | Buyer | Profile |
-| `/admin` | Admin | Dashboard |
-| `/admin/users` | Admin | User management |
-| `/admin/analytics` | Admin | Sales analytics |
-| `/admin/affiliates` | Admin | Affiliate management |
-| `/manager` | Manager | Dashboard |
-| `/manager/products` | Manager | Product management |
-| `/manager/inventory` | Manager | Inventory |
-| `/manager/categories` | Manager | Categories |
-| `/delivery` | Delivery | Dashboard |
-| `/delivery/orders` | Delivery | My orders |
-| `/affiliate` | Affiliate | Dashboard |
-| `/affiliate/referrals` | Affiliate | Referral management |
-| `/affiliate/earnings` | Affiliate | Earnings history |
-| `/developer` | Developer | Dashboard |
-| `/developer/analytics` | Developer | Platform analytics |
+| Role          | Email                       | Password         | Dashboard          |
+|---------------|----------------------------|------------------|--------------------|
+| Developer     | developer@sahadstores.com   | Developer@123456 | /developer         |
+| Admin         | admin@sahadstores.com       | Admin@123456     | /admin             |
+| Manager       | manager@sahadstores.com     | Manager@123456   | /manager           |
+| Stock Manager | stock@sahadstores.com       | Stock@123456     | /stock-manager     |
+| Delivery      | delivery@sahadstores.com    | Delivery@123456  | /delivery          |
+| Buyer         | (self-register at /auth)    | own password     | /buyer             |
+| Reader        | (promoted from buyer)       | own password     | /affiliate         |
 
 ---
 
-## Staff Credentials (Option B — Full Stack)
+## Demo Navigator Bar
 
-| Role | Email | Password |
-|------|-------|----------|
-| Admin | admin@sahadstores.com | Admin@123456 |
-| Manager | manager@sahadstores.com | Manager@123456 |
-| Delivery | delivery@sahadstores.com | Delivery@123456 |
-| Developer | developer@sahadstores.com | Developer@123456 |
+A floating bar at the bottom of every page lets you jump between all role dashboards instantly:
 
-Buyers self-register at `/auth`.
-
----
-
-## Switching to Production
-
-**Step 1** — Replace `client/src/lib/trpc.ts` with:
-```ts
-import { createTRPCReact } from "@trpc/react-query";
-import type { AppRouter } from "../../../server/routers";
-export const trpc = createTRPCReact<AppRouter>();
+```
+🏠 Home | 🛍 Products | 🛒 Buyer | 🛡 Admin | 📦 Manager | 🗂 StockMgr | 🚚 Delivery | 🔗 Affiliate | 💻 Developer
 ```
 
-**Step 2** — Replace `client/src/_core/hooks/useAuth.ts` with the real version
-(calls `trpc.auth.me.useQuery()` — see `AUTH_GUIDE.md`)
+---
 
-**Step 3** — Restore `ProtectedRoute` guards in `App.tsx`
+## Git Branch Strategy
 
-**Step 4** — Restore `main.tsx` to use `httpBatchStreamLink`
+```
+main (DOME)         → frozen prototype — do not touch
+GIMBIYA MALL        → active development (this branch)
+production          → next: create after DEMO checklist passes
+deployment          → next: create after production smoke test
+```
 
-**Step 5** — Configure `.env` with real MongoDB URI
-
-**Step 6** — Deploy:
+Promotion command sequence:
 ```bash
+# Step 1: All tests green
+pnpm test
+
+# Step 2: Clean build
 pnpm build:full
-pnpm start
+
+# Step 3: Promote to production
+git checkout -b production
+git merge GIMBIYA-MALL
+
+# Step 4: After staging smoke test
+git checkout -b deployment
+git merge production
+git tag v1.0.0-demo
 ```
 
 ---
 
-## Troubleshooting
+## Running Tests
 
-| Problem | Fix |
-|---------|-----|
-| `pnpm: command not found` | `npm install -g pnpm` |
-| Blank white screen | Open browser console — look for red errors |
-| Port 5173 busy | Vite auto-picks next port |
-| Port 3000 busy | Set `PORT=3001` in `.env` |
-| Cannot find `@shared/const` | Run `pnpm install` from project root |
-| TypeScript errors in editor | Normal — demo mock types differ from real tRPC types |
+```bash
+pnpm test
+```
+
+Test files:
+- `server/pricing.test.ts` — fee calculation logic (30+ tests)
+- `server/rbac.test.ts` — all 7 role procedures (allow + block)
+- `server/stockmanager.test.ts` — stock manager routes + input validation
+- `server/commission.test.ts` — existing commission module
+- `server/auth.logout.test.ts` — session cookie clearing

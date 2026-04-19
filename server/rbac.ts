@@ -43,6 +43,21 @@ export const developerProcedure = protectedProcedure.use(({ ctx, next }) => {
   return next({ ctx });
 });
 
+export const stockManagerProcedure = protectedProcedure.use(({ ctx, next }) => {
+  if (ctx.user.role !== "stock_manager") {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Only stock managers can access this resource." });
+  }
+  return next({ ctx });
+});
+
+// Shared inventory access: manager OR stock_manager
+export const inventoryProcedure = protectedProcedure.use(({ ctx, next }) => {
+  if (ctx.user.role !== "manager" && ctx.user.role !== "stock_manager" && ctx.user.role !== "admin" && ctx.user.role !== "developer") {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Only inventory staff can access this resource." });
+  }
+  return next({ ctx });
+});
+
 export const adminOrManagerProcedure = protectedProcedure.use(({ ctx, next }) => {
   if (ctx.user.role !== "admin" && ctx.user.role !== "manager") {
     throw new TRPCError({ code: "FORBIDDEN", message: "Only admins or managers can access this resource." });
@@ -51,7 +66,7 @@ export const adminOrManagerProcedure = protectedProcedure.use(({ ctx, next }) =>
 });
 
 export const staffProcedure = protectedProcedure.use(({ ctx, next }) => {
-  const staffRoles = ["admin", "manager", "delivery", "developer"];
+  const staffRoles = ["admin", "manager", "stock_manager", "delivery", "developer"];
   if (!staffRoles.includes(ctx.user.role)) {
     throw new TRPCError({ code: "FORBIDDEN", message: "Only staff can access this resource." });
   }

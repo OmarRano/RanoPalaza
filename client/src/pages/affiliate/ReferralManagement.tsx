@@ -15,7 +15,7 @@ export default function ReferralManagement() {
 
   const handleShare = () => {
     if (navigator.share && linkData?.url) {
-      navigator.share({ title: "Shop at Sahad Stores", url: linkData.url });
+      navigator.share({ title: "Shop at Gimbiya Mall", url: linkData.url });
     } else {
       handleCopy(linkData?.url ?? "");
     }
