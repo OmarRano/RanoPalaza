@@ -22,42 +22,48 @@ type DemoUser = {
 const DEMO_USERS: Record<string, DemoUser> = {
   admin: {
     _id: "admin-001", id: "admin-001",
-    name: "Amina Oladipo", email: "admin@sahadstores.com",
+    name: "Amina Oladipo", email: "admin@gimbiyamall.com",
     role: "admin", phone: "+234 812 345 6789", isAffiliate: false,
   },
   manager: {
     _id: "manager-001", id: "manager-001",
-    name: "Daniel Chukwu", email: "manager@sahadstores.com",
+    name: "Daniel Chukwu", email: "manager@gimbiyamall.com",
     role: "manager", phone: "+234 809 123 4567", isAffiliate: false,
+  },
+  stock_manager: {
+    _id: "stockmgr-001", id: "stockmgr-001",
+    name: "Hauwa Musa", email: "stock@gimbiyamall.com",
+    role: "stock_manager", phone: "+234 813 456 7890", isAffiliate: false,
   },
   delivery: {
     _id: "delivery-001", id: "delivery-001",
-    name: "Precious Eze", email: "delivery@sahadstores.com",
+    name: "Precious Eze", email: "delivery@gimbiyamall.com",
     role: "delivery", phone: "+234 901 234 5678", isAffiliate: false,
   },
   reader: {
     _id: "affiliate-001", id: "affiliate-001",
-    name: "Femi Adeyemi", email: "affiliate@sahadstores.com",
+    name: "Femi Adeyemi", email: "affiliate@gimbiyamall.com",
     role: "reader", phone: "+234 803 456 7890", isAffiliate: true,
   },
   developer: {
     _id: "developer-001", id: "developer-001",
-    name: "Ngozi Okafor", email: "developer@sahadstores.com",
+    name: "Ngozi Okafor", email: "developer@gimbiyamall.com",
     role: "developer", phone: "+234 807 654 3210", isAffiliate: false,
   },
   buyer: {
     _id: "buyer-001", id: "buyer-001",
-    name: "Peter Nwosu", email: "buyer@sahadstores.com",
+    name: "Peter Nwosu", email: "buyer@gimbiyamall.com",
     role: "buyer", phone: "+234 805 123 4567", isAffiliate: false,
   },
 };
 
 function getRoleFromPath(pathname: string): string {
-  if (pathname.startsWith("/admin"))     return "admin";
-  if (pathname.startsWith("/manager"))   return "manager";
-  if (pathname.startsWith("/delivery"))  return "delivery";
-  if (pathname.startsWith("/affiliate")) return "reader";
-  if (pathname.startsWith("/developer")) return "developer";
+  if (pathname.startsWith("/admin"))         return "admin";
+  if (pathname.startsWith("/manager"))       return "manager";
+  if (pathname.startsWith("/stock-manager")) return "stock_manager";
+  if (pathname.startsWith("/delivery"))      return "delivery";
+  if (pathname.startsWith("/affiliate"))     return "reader";
+  if (pathname.startsWith("/developer"))     return "developer";
   if (
     pathname.startsWith("/buyer") ||
     pathname.startsWith("/cart") ||
@@ -65,7 +71,7 @@ function getRoleFromPath(pathname: string): string {
     pathname.startsWith("/checkout") ||
     pathname.startsWith("/profile")
   ) return "buyer";
-  return "buyer"; // default for /products, /product/:id etc.
+  return "buyer";
 }
 
 export function useAuth(_options?: { redirectOnUnauthenticated?: boolean; redirectPath?: string }) {
