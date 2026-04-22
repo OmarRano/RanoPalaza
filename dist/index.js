@@ -1,0 +1,1011 @@
+var __defProp = Object.defineProperty;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __esm = (fn, res) => function __init() {
+  return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
+};
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+
+// server/models/User.ts
+var User_exports = {};
+__export(User_exports, {
+  User: () => User
+});
+import mongoose, { Schema } from "mongoose";
+import bcrypt from "bcryptjs";
+var userSchema, User;
+var init_User = __esm({
+  "server/models/User.ts"() {
+    "use strict";
+    userSchema = new Schema(
+      {
+        name: { type: String, required: true, trim: true, minlength: [2, "Name must be at least 2 characters"] },
+        email: {
+          type: String,
+          required: true,
+          unique: true,
+          lowercase: true,
+          trim: true,
+          match: [/^\S+@\S+\.\S+$/, "Invalid email format"]
+        },
+        passwordHash: { type: String, required: true, select: false },
+        phone: { type: String, trim: true },
+        role: {
+          type: String,
+          enum: ["admin", "manager", "delivery", "reader", "buyer", "developer"],
+          default: "buyer"
+        },
+        profileImage: { type: String },
+        address: { type: String },
+        city: { type: String },
+        state: { type: String },
+        zipCode: { type: String },
+        country: { type: String, default: "Nigeria" },
+        isActive: { type: Boolean, default: true },
+        isAffiliate: { type: Boolean, default: false },
+        lastSignedIn: { type: Date, default: Date.now }
+      },
+      { timestamps: true }
+    );
+    userSchema.index({ email: 1 });
+    userSchema.index({ role: 1 });
+    userSchema.methods.comparePassword = async function(password) {
+      return bcrypt.compare(password, this.passwordHash);
+    };
+    User = mongoose.model("User", userSchema);
+  }
+});
+
+// server/_core/index.ts
+import "dotenv/config";
+import express2 from "express";
+import { createServer } from "http";
+import net from "net";
+import { createExpressMiddleware } from "@trpc/server/adapters/express";
+
+// server/_core/trpc.ts
+import { initTRPC, TRPCError } from "@trpc/server";
+import superjson from "superjson";
+var t = initTRPC.context().create({ transformer: superjson });
+var router = t.router;
+var publicProcedure = t.procedure;
+var requireUser = t.middleware(async ({ ctx, next }) => {
+  if (!ctx.user) {
+    throw new TRPCError({ code: "UNAUTHORIZED", message: "Please log in to continue." });
+  }
+  return next({ ctx: { ...ctx, user: ctx.user } });
+});
+var protectedProcedure = t.procedure.use(requireUser);
+
+// server/auth.ts
+init_User();
+import { z } from "zod";
+import bcrypt2 from "bcryptjs";
+
+// server/_core/auth.ts
+import { SignJWT, jwtVerify } from "jose";
+import { parse as parseCookieHeader } from "cookie";
+var COOKIE_NAME = "sahad_session";
+var ONE_YEAR_MS = 1e3 * 60 * 60 * 24 * 365;
+function getSecretKey() {
+  const secret = process.env.JWT_SECRET;
+  if (!secret || secret.length < 32) {
+    throw new Error("JWT_SECRET must be at least 32 characters long");
+  }
+  return new TextEncoder().encode(secret);
+}
+async function createSessionToken(user, options = {}) {
+  const expiresInMs = options.expiresInMs ?? ONE_YEAR_MS;
+  const expirationSeconds = Math.floor((Date.now() + expiresInMs) / 1e3);
+  return new SignJWT({
+    userId: user._id.toString(),
+    email: user.email,
+    role: user.role,
+    name: user.name
+  }).setProtectedHeader({ alg: "HS256", typ: "JWT" }).setIssuedAt().setExpirationTime(expirationSeconds).sign(getSecretKey());
+}
+async function verifySessionToken(token) {
+  if (!token) return null;
+  try {
+    const { payload } = await jwtVerify(token, getSecretKey(), { algorithms: ["HS256"] });
+    const { userId, email, role, name } = payload;
+    if (typeof userId !== "string" || typeof email !== "string" || typeof role !== "string" || typeof name !== "string") return null;
+    return { userId, email, role, name };
+  } catch {
+    return null;
+  }
+}
+function getSessionToken(req) {
+  const cookieHeader = req.headers.cookie;
+  if (!cookieHeader) return void 0;
+  return parseCookieHeader(cookieHeader)[COOKIE_NAME];
+}
+function getSessionCookieOptions(_req) {
+  const isProduction = process.env.NODE_ENV === "production";
+  return {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? "strict" : "lax",
+    maxAge: ONE_YEAR_MS,
+    path: "/"
+  };
+}
+
+// server/auth.ts
+var passwordSchema = z.string().min(8, "Password must be at least 8 characters").regex(/[A-Z]/, "Password must contain at least one uppercase letter").regex(/[0-9]/, "Password must contain at least one number");
+var authRouter = router({
+  /**
+   * Returns the currently authenticated user (password hash excluded).
+   * Frontend calls this on every page load to check session state.
+   */
+  me: publicProcedure.query(async ({ ctx }) => {
+    if (!ctx.user) return null;
+    const { passwordHash, ...safeUser } = ctx.user;
+    return safeUser;
+  }),
+  /**
+   * Clears the session cookie, logging the user out.
+   */
+  logout: publicProcedure.mutation(({ ctx }) => {
+    ctx.res.clearCookie(COOKIE_NAME, { path: "/" });
+    return { success: true };
+  }),
+  /**
+   * BUYER SIGN UP
+   * ─────────────────────────────────────────────────────────────────────────
+   * • Open to anyone — all sign-ups are assigned the "buyer" role.
+   * • Password is hashed with bcrypt (12 salt rounds) before saving.
+   * • Auto-logs in after successful registration.
+   *
+   * Validation rules:
+   *   - name        ≥ 2 chars
+   *   - email       valid format, must be unique
+   *   - password    ≥ 8 chars, 1 uppercase, 1 number
+   *   - confirmPassword must match password
+   */
+  signupBuyer: publicProcedure.input(
+    z.object({
+      name: z.string().min(2, "Name must be at least 2 characters"),
+      email: z.string().email("Invalid email address"),
+      phone: z.string().optional(),
+      password: passwordSchema,
+      confirmPassword: z.string()
+    })
+  ).mutation(async ({ input, ctx }) => {
+    if (input.password !== input.confirmPassword) {
+      throw new Error("Passwords do not match.");
+    }
+    const existing = await User.findOne({ email: input.email.toLowerCase().trim() });
+    if (existing) {
+      throw new Error("Email already registered. Please sign in instead.");
+    }
+    const salt = await bcrypt2.genSalt(12);
+    const passwordHash = await bcrypt2.hash(input.password, salt);
+    const user = await User.create({
+      name: input.name.trim(),
+      email: input.email.toLowerCase().trim(),
+      passwordHash,
+      phone: input.phone?.trim() || void 0,
+      role: "buyer",
+      isActive: true
+    });
+    const token = await createSessionToken(user);
+    ctx.res.cookie(COOKIE_NAME, token, getSessionCookieOptions(ctx.req));
+    return {
+      success: true,
+      message: "Account created successfully! Welcome to Sahad Stores.",
+      role: "buyer"
+    };
+  }),
+  /**
+   * BUYER LOGIN
+   * ─────────────────────────────────────────────────────────────────────────
+   * • For customers (buyer) and affiliates (reader) only.
+   * • Uses generic "Invalid email or password" to prevent email enumeration.
+   * • Staff accounts are rejected here — they must use loginStaff.
+   */
+  loginBuyer: publicProcedure.input(
+    z.object({
+      email: z.string().email("Invalid email address"),
+      password: z.string().min(1, "Password is required")
+    })
+  ).mutation(async ({ input, ctx }) => {
+    const user = await User.findOne({
+      email: input.email.toLowerCase().trim()
+    }).select("+passwordHash");
+    if (!user) throw new Error("Invalid email or password.");
+    if (!user.isActive) {
+      throw new Error("Your account has been deactivated. Please contact support.");
+    }
+    const buyerRoles = ["buyer", "reader"];
+    if (!buyerRoles.includes(user.role)) {
+      throw new Error("Staff accounts must use the Staff Portal login.");
+    }
+    const isValid = await user.comparePassword(input.password);
+    if (!isValid) throw new Error("Invalid email or password.");
+    await User.findByIdAndUpdate(user._id, { lastSignedIn: /* @__PURE__ */ new Date() });
+    const token = await createSessionToken(user);
+    ctx.res.cookie(COOKIE_NAME, token, getSessionCookieOptions(ctx.req));
+    return { success: true, message: "Welcome back!", role: user.role };
+  }),
+  /**
+   * STAFF LOGIN
+   * ─────────────────────────────────────────────────────────────────────────
+   * • For admin, manager, delivery, and developer roles only.
+   * • Staff accounts are seeded into MongoDB at startup.
+   * • Buyer accounts are rejected here — they must use loginBuyer.
+   */
+  loginStaff: publicProcedure.input(
+    z.object({
+      email: z.string().email("Invalid email address"),
+      password: z.string().min(1, "Password is required")
+    })
+  ).mutation(async ({ input, ctx }) => {
+    const user = await User.findOne({
+      email: input.email.toLowerCase().trim()
+    }).select("+passwordHash");
+    if (!user) throw new Error("Invalid email or password.");
+    if (!user.isActive) {
+      throw new Error("Account deactivated. Please contact the administrator.");
+    }
+    const staffRoles = ["admin", "manager", "delivery", "developer"];
+    if (!staffRoles.includes(user.role)) {
+      throw new Error("Buyer accounts must use the Shop Account login.");
+    }
+    const isValid = await user.comparePassword(input.password);
+    if (!isValid) throw new Error("Invalid email or password.");
+    await User.findByIdAndUpdate(user._id, { lastSignedIn: /* @__PURE__ */ new Date() });
+    const token = await createSessionToken(user);
+    ctx.res.cookie(COOKIE_NAME, token, getSessionCookieOptions(ctx.req));
+    return {
+      success: true,
+      message: `Logged in as ${user.role}`,
+      role: user.role
+    };
+  })
+});
+
+// server/routers.ts
+import { z as z2 } from "zod";
+import mongoose7 from "mongoose";
+import { nanoid } from "nanoid";
+
+// server/rbac.ts
+import { TRPCError as TRPCError2 } from "@trpc/server";
+var adminProcedure = protectedProcedure.use(({ ctx, next }) => {
+  if (ctx.user.role !== "admin") {
+    throw new TRPCError2({ code: "FORBIDDEN", message: "Only admins can access this resource." });
+  }
+  return next({ ctx });
+});
+var managerProcedure = protectedProcedure.use(({ ctx, next }) => {
+  if (ctx.user.role !== "manager") {
+    throw new TRPCError2({ code: "FORBIDDEN", message: "Only managers can access this resource." });
+  }
+  return next({ ctx });
+});
+var deliveryProcedure = protectedProcedure.use(({ ctx, next }) => {
+  if (ctx.user.role !== "delivery") {
+    throw new TRPCError2({ code: "FORBIDDEN", message: "Only delivery personnel can access this resource." });
+  }
+  return next({ ctx });
+});
+var readerProcedure = protectedProcedure.use(({ ctx, next }) => {
+  if (ctx.user.role !== "reader") {
+    throw new TRPCError2({ code: "FORBIDDEN", message: "Only affiliates can access this resource." });
+  }
+  return next({ ctx });
+});
+var buyerProcedure = protectedProcedure.use(({ ctx, next }) => {
+  if (ctx.user.role !== "buyer" && ctx.user.role !== "reader") {
+    throw new TRPCError2({ code: "FORBIDDEN", message: "Only buyers can access this resource." });
+  }
+  return next({ ctx });
+});
+var developerProcedure = protectedProcedure.use(({ ctx, next }) => {
+  if (ctx.user.role !== "developer") {
+    throw new TRPCError2({ code: "FORBIDDEN", message: "Only developers can access this resource." });
+  }
+  return next({ ctx });
+});
+var adminOrManagerProcedure = protectedProcedure.use(({ ctx, next }) => {
+  if (ctx.user.role !== "admin" && ctx.user.role !== "manager") {
+    throw new TRPCError2({ code: "FORBIDDEN", message: "Only admins or managers can access this resource." });
+  }
+  return next({ ctx });
+});
+var adminOrDeveloperProcedure = protectedProcedure.use(({ ctx, next }) => {
+  if (ctx.user.role !== "admin" && ctx.user.role !== "developer") {
+    throw new TRPCError2({ code: "FORBIDDEN", message: "Only admins or developers can access this resource." });
+  }
+  return next({ ctx });
+});
+var staffProcedure = protectedProcedure.use(({ ctx, next }) => {
+  const staffRoles = ["admin", "manager", "delivery", "developer"];
+  if (!staffRoles.includes(ctx.user.role)) {
+    throw new TRPCError2({ code: "FORBIDDEN", message: "Only staff can access this resource." });
+  }
+  return next({ ctx });
+});
+
+// server/db.ts
+init_User();
+import mongoose6 from "mongoose";
+
+// server/models/Product.ts
+import mongoose2, { Schema as Schema2 } from "mongoose";
+var productSchema = new Schema2(
+  {
+    name: { type: String, required: true, trim: true },
+    description: { type: String },
+    categoryId: { type: Schema2.Types.ObjectId, ref: "Category", required: true },
+    costPrice: { type: Number, required: true, min: 0 },
+    baseSalePrice: { type: Number, required: true, min: 0 },
+    commissionPercent: { type: Number, default: 10, min: 0, max: 100 },
+    finalPrice: { type: Number, required: true, min: 0 },
+    stockQuantity: { type: Number, default: 0, min: 0 },
+    soldQuantity: { type: Number, default: 0, min: 0 },
+    images: { type: [String], default: [] },
+    isFeatured: { type: Boolean, default: false },
+    isActive: { type: Boolean, default: true },
+    createdBy: { type: Schema2.Types.ObjectId, ref: "User", required: true }
+  },
+  { timestamps: true }
+);
+productSchema.index({ categoryId: 1 });
+productSchema.index({ isFeatured: 1, isActive: 1 });
+productSchema.index({ name: "text", description: "text" });
+var Product = mongoose2.model("Product", productSchema);
+
+// server/models/Category.ts
+import mongoose3, { Schema as Schema3 } from "mongoose";
+var categorySchema = new Schema3(
+  {
+    name: { type: String, required: true, unique: true, trim: true },
+    description: { type: String },
+    image: { type: String },
+    isActive: { type: Boolean, default: true }
+  },
+  { timestamps: true }
+);
+var Category = mongoose3.model("Category", categorySchema);
+
+// server/models/Order.ts
+import mongoose4, { Schema as Schema4 } from "mongoose";
+var orderItemSchema = new Schema4(
+  {
+    productId: { type: Schema4.Types.ObjectId, ref: "Product", required: true },
+    name: { type: String, required: true },
+    quantity: { type: Number, required: true, min: 1 },
+    costPrice: { type: Number, required: true },
+    baseSalePrice: { type: Number, required: true },
+    commissionPercent: { type: Number, required: true },
+    commissionAmount: { type: Number, required: true },
+    finalPrice: { type: Number, required: true },
+    subtotal: { type: Number, required: true }
+  },
+  { _id: false }
+);
+var orderSchema = new Schema4(
+  {
+    orderId: { type: String, required: true, unique: true },
+    buyerId: { type: Schema4.Types.ObjectId, ref: "User", required: true },
+    items: { type: [orderItemSchema], required: true },
+    totalAmount: { type: Number, required: true },
+    commissionAmount: { type: Number, default: 0 },
+    finalAmount: { type: Number, required: true },
+    status: {
+      type: String,
+      enum: ["pending", "paid", "processing", "assigned", "in_transit", "delivered", "cancelled"],
+      default: "pending"
+    },
+    paymentStatus: {
+      type: String,
+      enum: ["pending", "paid", "failed", "refunded"],
+      default: "pending"
+    },
+    paymentReference: { type: String },
+    shippingAddress: { type: String, required: true },
+    shippingCity: { type: String, required: true },
+    shippingState: { type: String },
+    shippingZipCode: { type: String },
+    shippingCountry: { type: String, required: true, default: "Nigeria" },
+    buyerPhone: { type: String, required: true },
+    deliveryRiderId: { type: Schema4.Types.ObjectId, ref: "User" },
+    deliveryNotes: { type: String },
+    referralCode: { type: String }
+  },
+  { timestamps: true }
+);
+orderSchema.index({ buyerId: 1, createdAt: -1 });
+orderSchema.index({ status: 1 });
+orderSchema.index({ deliveryRiderId: 1 });
+orderSchema.index({ orderId: 1 });
+var Order = mongoose4.model("Order", orderSchema);
+
+// server/models/CartItem.ts
+import mongoose5, { Schema as Schema5 } from "mongoose";
+var cartItemSchema = new Schema5(
+  {
+    userId: { type: Schema5.Types.ObjectId, ref: "User", required: true },
+    productId: { type: Schema5.Types.ObjectId, ref: "Product", required: true },
+    quantity: { type: Number, required: true, min: 1, default: 1 }
+  },
+  { timestamps: true }
+);
+cartItemSchema.index({ userId: 1 });
+cartItemSchema.index({ userId: 1, productId: 1 }, { unique: true });
+var CartItem = mongoose5.model("CartItem", cartItemSchema);
+
+// server/db.ts
+async function getAllUsers(role, limit = 50, offset = 0) {
+  const filter = {};
+  if (role) filter.role = role;
+  return User.find(filter).select("-passwordHash").sort({ createdAt: -1 }).skip(offset).limit(limit).lean();
+}
+async function updateUserRole(userId, role) {
+  await User.findByIdAndUpdate(userId, { role });
+}
+async function setUserAffiliate(userId, isAffiliate) {
+  await User.findByIdAndUpdate(userId, {
+    isAffiliate,
+    role: isAffiliate ? "reader" : "buyer"
+  });
+}
+async function getProductById(id) {
+  return Product.findById(id).populate("categoryId").lean();
+}
+async function getFeaturedProducts(limit = 10) {
+  return Product.find({ isFeatured: true, isActive: true }).populate("categoryId").limit(limit).lean();
+}
+async function getProductsByCategory(categoryId, limit = 20, offset = 0) {
+  return Product.find({ categoryId, isActive: true }).skip(offset).limit(limit).lean();
+}
+async function searchProducts(query, limit = 20, offset = 0) {
+  return Product.find({ $text: { $search: query }, isActive: true }).skip(offset).limit(limit).lean();
+}
+async function getAllCategories() {
+  return Category.find({ isActive: true }).lean();
+}
+async function getCartItems(userId) {
+  return CartItem.find({ userId }).populate("productId").lean();
+}
+async function addToCart(userId, productId, quantity) {
+  await CartItem.findOneAndUpdate(
+    { userId, productId },
+    { $inc: { quantity } },
+    { upsert: true, new: true }
+  );
+}
+async function removeFromCart(cartItemId) {
+  await CartItem.findByIdAndDelete(cartItemId);
+}
+async function clearCart(userId) {
+  await CartItem.deleteMany({ userId });
+}
+async function getUserOrders(userId, limit = 20, offset = 0) {
+  return Order.find({ buyerId: userId }).sort({ createdAt: -1 }).skip(offset).limit(limit).lean();
+}
+async function getOrderByOrderId(orderId) {
+  return Order.findOne({ orderId }).lean();
+}
+async function getDeliveryOrders(riderId, limit = 20, offset = 0) {
+  return Order.find({ deliveryRiderId: riderId }).sort({ createdAt: -1 }).skip(offset).limit(limit).populate("buyerId", "name phone").lean();
+}
+async function getPlatformStats() {
+  const [totalUsers, totalBuyers, totalProducts, totalOrders, deliveredOrders] = await Promise.all([
+    User.countDocuments(),
+    User.countDocuments({ role: "buyer" }),
+    Product.countDocuments({ isActive: true }),
+    Order.countDocuments(),
+    Order.countDocuments({ status: "delivered" })
+  ]);
+  const revenueAgg = await Order.aggregate([
+    { $match: { paymentStatus: "paid" } },
+    { $group: { _id: null, total: { $sum: "$finalAmount" } } }
+  ]);
+  const totalRevenue = revenueAgg[0]?.total ?? 0;
+  return { totalUsers, totalBuyers, totalProducts, totalOrders, deliveredOrders, totalRevenue };
+}
+async function getTotalSalesStats() {
+  return Order.aggregate([
+    { $match: { paymentStatus: "paid" } },
+    {
+      $group: {
+        _id: { year: { $year: "$createdAt" }, month: { $month: "$createdAt" } },
+        revenue: { $sum: "$finalAmount" },
+        orders: { $sum: 1 }
+      }
+    },
+    { $sort: { "_id.year": 1, "_id.month": 1 } }
+  ]);
+}
+
+// server/routers.ts
+function calcFinalPrice(baseSalePrice, commissionPercent) {
+  return parseFloat((baseSalePrice * (1 + commissionPercent / 100)).toFixed(2));
+}
+var appRouter = router({
+  auth: authRouter,
+  // PRODUCTS
+  products: router({
+    list: publicProcedure.input(z2.object({ limit: z2.number().default(20), offset: z2.number().default(0) })).query(
+      async ({ input }) => Product.find({ isActive: true }).populate("categoryId").skip(input.offset).limit(input.limit).lean()
+    ),
+    featured: publicProcedure.query(() => getFeaturedProducts(10)),
+    byCategory: publicProcedure.input(z2.object({ categoryId: z2.string(), limit: z2.number().default(20), offset: z2.number().default(0) })).query(({ input }) => getProductsByCategory(input.categoryId, input.limit, input.offset)),
+    search: publicProcedure.input(z2.object({ query: z2.string(), limit: z2.number().default(20), offset: z2.number().default(0) })).query(({ input }) => searchProducts(input.query, input.limit, input.offset)),
+    detail: publicProcedure.input(z2.object({ id: z2.string() })).query(({ input }) => getProductById(input.id)),
+    create: managerProcedure.input(z2.object({
+      name: z2.string(),
+      description: z2.string().optional(),
+      categoryId: z2.string(),
+      costPrice: z2.number(),
+      baseSalePrice: z2.number(),
+      commissionPercent: z2.number().default(10),
+      stockQuantity: z2.number().default(0),
+      images: z2.array(z2.string()).default([])
+    })).mutation(async ({ input, ctx }) => {
+      const finalPrice = calcFinalPrice(input.baseSalePrice, input.commissionPercent);
+      const p = await Product.create({ ...input, categoryId: new mongoose7.Types.ObjectId(input.categoryId), finalPrice, createdBy: ctx.user._id });
+      return { success: true, id: p._id.toString() };
+    }),
+    update: managerProcedure.input(z2.object({
+      id: z2.string(),
+      name: z2.string().optional(),
+      description: z2.string().optional(),
+      baseSalePrice: z2.number().optional(),
+      commissionPercent: z2.number().optional(),
+      stockQuantity: z2.number().optional(),
+      isFeatured: z2.boolean().optional(),
+      isActive: z2.boolean().optional()
+    })).mutation(async ({ input }) => {
+      const { id, ...updates } = input;
+      const product = await Product.findById(id);
+      if (!product) throw new Error("Product not found");
+      if (updates.baseSalePrice || updates.commissionPercent) {
+        const price = updates.baseSalePrice ?? product.baseSalePrice;
+        const pct = updates.commissionPercent ?? product.commissionPercent;
+        updates.finalPrice = calcFinalPrice(price, pct);
+      }
+      await Product.findByIdAndUpdate(id, updates);
+      return { success: true };
+    }),
+    delete: managerProcedure.input(z2.object({ id: z2.string() })).mutation(async ({ input }) => {
+      await Product.findByIdAndUpdate(input.id, { isActive: false });
+      return { success: true };
+    })
+  }),
+  // CATEGORIES
+  categories: router({
+    list: publicProcedure.query(() => getAllCategories()),
+    create: adminOrManagerProcedure.input(z2.object({ name: z2.string(), description: z2.string().optional(), image: z2.string().optional() })).mutation(async ({ input }) => {
+      const cat = await Category.create(input);
+      return { success: true, id: cat._id.toString() };
+    }),
+    update: adminOrManagerProcedure.input(z2.object({ id: z2.string(), name: z2.string().optional(), description: z2.string().optional(), isActive: z2.boolean().optional() })).mutation(async ({ input }) => {
+      const { id, ...updates } = input;
+      await Category.findByIdAndUpdate(id, updates);
+      return { success: true };
+    })
+  }),
+  // CART
+  cart: router({
+    list: buyerProcedure.query(async ({ ctx }) => getCartItems(ctx.user._id.toString())),
+    add: buyerProcedure.input(z2.object({ productId: z2.string(), quantity: z2.number().min(1) })).mutation(async ({ input, ctx }) => {
+      await addToCart(ctx.user._id.toString(), input.productId, input.quantity);
+      return { success: true };
+    }),
+    remove: buyerProcedure.input(z2.object({ cartItemId: z2.string() })).mutation(async ({ input }) => {
+      await removeFromCart(input.cartItemId);
+      return { success: true };
+    }),
+    updateQuantity: buyerProcedure.input(z2.object({ cartItemId: z2.string(), quantity: z2.number().min(1) })).mutation(async ({ input }) => {
+      await CartItem.findByIdAndUpdate(input.cartItemId, { quantity: input.quantity });
+      return { success: true };
+    }),
+    clear: buyerProcedure.mutation(async ({ ctx }) => {
+      await clearCart(ctx.user._id.toString());
+      return { success: true };
+    })
+  }),
+  // ORDERS
+  orders: router({
+    list: buyerProcedure.input(z2.object({ limit: z2.number().default(20), offset: z2.number().default(0) })).query(async ({ input, ctx }) => getUserOrders(ctx.user._id.toString(), input.limit, input.offset)),
+    detail: publicProcedure.input(z2.object({ orderId: z2.string() })).query(async ({ input }) => {
+      const order = await getOrderByOrderId(input.orderId);
+      if (!order) throw new Error("Order not found");
+      return order;
+    }),
+    create: buyerProcedure.input(z2.object({
+      shippingAddress: z2.string(),
+      shippingCity: z2.string(),
+      shippingState: z2.string().optional(),
+      shippingZipCode: z2.string().optional(),
+      shippingCountry: z2.string().default("Nigeria"),
+      buyerPhone: z2.string(),
+      referralCode: z2.string().optional()
+    })).mutation(async ({ input, ctx }) => {
+      const userId = ctx.user._id.toString();
+      const cartItems = await getCartItems(userId);
+      if (cartItems.length === 0) throw new Error("Your cart is empty.");
+      let totalAmount = 0;
+      let totalCommission = 0;
+      const items = [];
+      for (const item of cartItems) {
+        const p = item.productId;
+        const commission = p.baseSalePrice * p.commissionPercent / 100;
+        const subtotal = p.finalPrice * item.quantity;
+        totalAmount += subtotal;
+        totalCommission += commission * item.quantity;
+        items.push({
+          productId: p._id,
+          name: p.name,
+          quantity: item.quantity,
+          costPrice: p.costPrice,
+          baseSalePrice: p.baseSalePrice,
+          commissionPercent: p.commissionPercent,
+          commissionAmount: parseFloat((commission * item.quantity).toFixed(2)),
+          finalPrice: p.finalPrice,
+          subtotal: parseFloat(subtotal.toFixed(2))
+        });
+      }
+      const orderId = `ORD-${nanoid(10).toUpperCase()}`;
+      await Order.create({
+        orderId,
+        buyerId: userId,
+        items,
+        totalAmount: parseFloat(totalAmount.toFixed(2)),
+        commissionAmount: parseFloat(totalCommission.toFixed(2)),
+        finalAmount: parseFloat(totalAmount.toFixed(2)),
+        ...input
+      });
+      await clearCart(userId);
+      return { success: true, orderId, totalAmount: parseFloat(totalAmount.toFixed(2)) };
+    }),
+    cancel: buyerProcedure.input(z2.object({ orderId: z2.string() })).mutation(async ({ input, ctx }) => {
+      const order = await getOrderByOrderId(input.orderId);
+      if (!order) throw new Error("Order not found");
+      if (order.buyerId.toString() !== ctx.user._id.toString()) throw new Error("Not authorised");
+      if (!["pending", "paid"].includes(order.status)) throw new Error("Cannot cancel at this stage");
+      await Order.findOneAndUpdate({ orderId: input.orderId }, { status: "cancelled" });
+      return { success: true };
+    }),
+    updateStatus: staffProcedure.input(z2.object({ orderId: z2.string(), status: z2.enum(["pending", "paid", "processing", "assigned", "in_transit", "delivered", "cancelled"]) })).mutation(async ({ input }) => {
+      await Order.findOneAndUpdate({ orderId: input.orderId }, { status: input.status });
+      return { success: true };
+    })
+  }),
+  // DELIVERY
+  delivery: router({
+    myOrders: deliveryProcedure.input(z2.object({ limit: z2.number().default(20), offset: z2.number().default(0) })).query(async ({ input, ctx }) => getDeliveryOrders(ctx.user._id.toString(), input.limit, input.offset)),
+    updateStatus: deliveryProcedure.input(z2.object({ orderId: z2.string(), status: z2.enum(["assigned", "in_transit", "delivered"]) })).mutation(async ({ input }) => {
+      const update = { status: input.status };
+      if (input.status === "delivered") update.paymentStatus = "paid";
+      await Order.findOneAndUpdate({ orderId: input.orderId }, update);
+      return { success: true };
+    }),
+    assignOrder: adminOrManagerProcedure.input(z2.object({ orderId: z2.string(), riderId: z2.string() })).mutation(async ({ input }) => {
+      await Order.findOneAndUpdate({ orderId: input.orderId }, { deliveryRiderId: input.riderId, status: "assigned" });
+      return { success: true };
+    })
+  }),
+  // ADMIN
+  admin: router({
+    stats: adminProcedure.query(() => getPlatformStats()),
+    salesStats: adminProcedure.query(() => getTotalSalesStats()),
+    users: adminOrDeveloperProcedure.input(z2.object({ role: z2.string().optional(), limit: z2.number().default(50), offset: z2.number().default(0) })).query(({ input }) => getAllUsers(input.role, input.limit, input.offset)),
+    updateUserRole: adminOrDeveloperProcedure.input(z2.object({ userId: z2.string(), role: z2.string() })).mutation(async ({ input }) => {
+      await updateUserRole(input.userId, input.role);
+      return { success: true };
+    }),
+    enableAffiliate: adminOrDeveloperProcedure.input(z2.object({ userId: z2.string(), enable: z2.boolean() })).mutation(async ({ input }) => {
+      await setUserAffiliate(input.userId, input.enable);
+      return { success: true };
+    }),
+    allOrders: adminProcedure.input(z2.object({ status: z2.string().optional(), limit: z2.number().default(50), offset: z2.number().default(0) })).query(async ({ input }) => {
+      const filter = {};
+      if (input.status) filter.status = input.status;
+      return Order.find(filter).sort({ createdAt: -1 }).skip(input.offset).limit(input.limit).populate("buyerId", "name email phone").lean();
+    })
+  }),
+  // AFFILIATE
+  affiliate: router({
+    getReferralLink: readerProcedure.query(async ({ ctx }) => {
+      const userId = ctx.user._id.toString();
+      const code = `REF-${userId.slice(-8).toUpperCase()}`;
+      const baseUrl = process.env.VITE_APP_URL || "http://localhost:3000";
+      return { code, url: `${baseUrl}/products?ref=${code}` };
+    }),
+    myStats: readerProcedure.query(async ({ ctx }) => {
+      const userId = ctx.user._id.toString();
+      const totalReferrals = await Order.countDocuments({ referralCode: { $regex: userId.slice(-8).toUpperCase() } });
+      return { totalReferrals, totalEarnings: 0 };
+    })
+  }),
+  // INVENTORY
+  inventory: router({
+    adjustStock: managerProcedure.input(z2.object({ productId: z2.string(), quantityChange: z2.number(), reason: z2.string() })).mutation(async ({ input }) => {
+      const product = await Product.findById(input.productId);
+      if (!product) throw new Error("Product not found");
+      const newStock = product.stockQuantity + input.quantityChange;
+      if (newStock < 0) throw new Error("Stock cannot go below zero");
+      await Product.findByIdAndUpdate(input.productId, { stockQuantity: newStock });
+      return { success: true, newStock };
+    }),
+    lowStock: managerProcedure.input(z2.object({ threshold: z2.number().default(10) })).query(async ({ input }) => Product.find({ stockQuantity: { $lte: input.threshold }, isActive: true }).lean())
+  }),
+  // DEVELOPER
+  developer: router({
+    platformStats: developerProcedure.query(() => getPlatformStats()),
+    salesStats: developerProcedure.query(() => getTotalSalesStats())
+  })
+});
+
+// server/_core/context.ts
+init_User();
+async function createContext(opts) {
+  let user = null;
+  try {
+    const token = getSessionToken(opts.req);
+    const session = await verifySessionToken(token);
+    if (session?.userId) {
+      user = await User.findById(session.userId).lean() ?? null;
+      if (user) {
+        User.findByIdAndUpdate(session.userId, { lastSignedIn: /* @__PURE__ */ new Date() }).exec();
+      }
+    }
+  } catch {
+    user = null;
+  }
+  return { req: opts.req, res: opts.res, user };
+}
+
+// server/mongodb.ts
+import mongoose8 from "mongoose";
+import bcrypt3 from "bcryptjs";
+var isConnected = false;
+async function connectDB() {
+  if (isConnected) return;
+  const mongoUri = process.env.MONGODB_URI;
+  if (!mongoUri) {
+    console.warn("[MongoDB] MONGODB_URI not set \u2014 database features disabled");
+    return;
+  }
+  try {
+    await mongoose8.connect(mongoUri, {
+      dbName: process.env.MONGODB_DB_NAME || "sahad_stores"
+    });
+    isConnected = true;
+    console.log("[MongoDB] Connected successfully");
+    mongoose8.connection.on("error", (err) => {
+      console.error("[MongoDB] Connection error:", err);
+      isConnected = false;
+    });
+    mongoose8.connection.on("disconnected", () => {
+      console.warn("[MongoDB] Disconnected");
+      isConnected = false;
+    });
+    await seedStaffAccounts();
+  } catch (error) {
+    console.error("[MongoDB] Failed to connect:", error);
+  }
+}
+async function seedStaffAccounts() {
+  const { User: User2 } = await Promise.resolve().then(() => (init_User(), User_exports));
+  const staff = [
+    { name: "Admin User", email: "admin@sahadstores.com", password: "Admin@123456", role: "admin" },
+    { name: "Manager User", email: "manager@sahadstores.com", password: "Manager@123456", role: "manager" },
+    { name: "Delivery Rider", email: "delivery@sahadstores.com", password: "Delivery@123456", role: "delivery" },
+    { name: "Developer User", email: "developer@sahadstores.com", password: "Developer@123456", role: "developer" }
+  ];
+  for (const s of staff) {
+    const exists = await User2.findOne({ email: s.email });
+    if (!exists) {
+      const salt = await bcrypt3.genSalt(12);
+      const passwordHash = await bcrypt3.hash(s.password, salt);
+      await User2.create({ name: s.name, email: s.email, passwordHash, role: s.role, isActive: true });
+      console.log(`[Seed] Created ${s.role} \u2192 ${s.email}`);
+    }
+  }
+}
+
+// server/_core/rateLimit.ts
+var store = /* @__PURE__ */ new Map();
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of store.entries()) {
+    if (now > entry.resetAt) store.delete(key);
+  }
+}, 5 * 60 * 1e3);
+function getClientIp(req) {
+  const forwarded = req.headers["x-forwarded-for"];
+  if (typeof forwarded === "string") return forwarded.split(",")[0].trim();
+  return req.socket.remoteAddress ?? "unknown";
+}
+function createRateLimiter(maxRequests, windowMs, keyPrefix = "rl") {
+  return (req, res, next) => {
+    const key = `${keyPrefix}:${getClientIp(req)}`;
+    const now = Date.now();
+    let entry = store.get(key);
+    if (!entry || now > entry.resetAt) {
+      store.set(key, { count: 1, resetAt: now + windowMs });
+      return next();
+    }
+    entry.count++;
+    if (entry.count > maxRequests) {
+      const retryAfter = Math.ceil((entry.resetAt - now) / 1e3);
+      res.setHeader("Retry-After", retryAfter);
+      return res.status(429).json({ error: "Too many requests. Please slow down.", retryAfterSeconds: retryAfter });
+    }
+    res.setHeader("X-RateLimit-Remaining", maxRequests - entry.count);
+    next();
+  };
+}
+var authRateLimiter = createRateLimiter(10, 15 * 60 * 1e3, "auth");
+var apiRateLimiter = createRateLimiter(200, 60 * 1e3, "api");
+
+// server/_core/vite.ts
+import express from "express";
+import fs from "fs";
+import { nanoid as nanoid2 } from "nanoid";
+import path2 from "path";
+import { fileURLToPath as fileURLToPath2 } from "node:url";
+import { createServer as createViteServer } from "vite";
+
+// vite.config.ts
+import tailwindcss from "@tailwindcss/vite";
+import react from "@vitejs/plugin-react";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { defineConfig } from "vite";
+var __dirname = path.dirname(fileURLToPath(import.meta.url));
+function debugCollector() {
+  return {
+    name: "debug-collector",
+    configureServer(server) {
+      server.middlewares.use("/__manus__/logs", (req, res, next) => {
+        if (req.method !== "POST") return next();
+        let body = "";
+        req.on("data", (c) => {
+          body += c.toString();
+        });
+        req.on("end", () => {
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ success: true }));
+        });
+      });
+    }
+  };
+}
+var vite_config_default = defineConfig({
+  plugins: [react(), tailwindcss(), debugCollector()],
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "client/src"),
+      "@shared": path.resolve(__dirname, "shared"),
+      "@assets": path.resolve(__dirname, "attached_assets")
+    }
+  },
+  // Vite's root is the client folder (index.html lives there)
+  root: path.resolve(__dirname, "client"),
+  publicDir: path.resolve(__dirname, "client/public"),
+  envDir: path.resolve(__dirname),
+  // .env lives at project root
+  build: {
+    outDir: path.resolve(__dirname, "dist/public"),
+    emptyOutDir: true
+  },
+  server: {
+    host: true,
+    allowedHosts: ["localhost", "127.0.0.1"],
+    fs: {
+      strict: false
+      // allow imports from shared/ which is outside client/
+    }
+  }
+});
+
+// server/_core/vite.ts
+var __dirname2 = path2.dirname(fileURLToPath2(import.meta.url));
+async function setupVite(app, server) {
+  const serverOptions = {
+    middlewareMode: true,
+    hmr: { server },
+    allowedHosts: true
+  };
+  const vite = await createViteServer({
+    ...vite_config_default,
+    configFile: false,
+    server: serverOptions,
+    appType: "custom"
+  });
+  app.use(vite.middlewares);
+  app.use("*", async (req, res, next) => {
+    const url = req.originalUrl;
+    try {
+      const clientTemplate = path2.resolve(
+        __dirname2,
+        "../..",
+        "client",
+        "index.html"
+      );
+      let template = await fs.promises.readFile(clientTemplate, "utf-8");
+      template = template.replace(
+        `src="/src/main.tsx"`,
+        `src="/src/main.tsx?v=${nanoid2()}"`
+      );
+      const page = await vite.transformIndexHtml(url, template);
+      res.status(200).set({ "Content-Type": "text/html" }).end(page);
+    } catch (e) {
+      vite.ssrFixStacktrace(e);
+      next(e);
+    }
+  });
+}
+function serveStatic(app) {
+  const distPath = process.env.NODE_ENV === "development" ? path2.resolve(__dirname2, "../..", "dist", "public") : path2.resolve(__dirname2, "public");
+  if (!fs.existsSync(distPath)) {
+    console.error(
+      `Could not find the build directory: ${distPath}, make sure to build the client first`
+    );
+  }
+  app.use(express.static(distPath));
+  app.use("*", (_req, res) => {
+    res.sendFile(path2.resolve(distPath, "index.html"));
+  });
+}
+
+// server/_core/index.ts
+function isPortAvailable(port) {
+  return new Promise((resolve) => {
+    const server = net.createServer();
+    server.listen(port, () => {
+      server.close(() => resolve(true));
+    });
+    server.on("error", () => resolve(false));
+  });
+}
+async function findAvailablePort(start = 3e3) {
+  for (let p = start; p < start + 20; p++) {
+    if (await isPortAvailable(p)) return p;
+  }
+  throw new Error(`No available port found from ${start}`);
+}
+async function startServer() {
+  await connectDB();
+  const app = express2();
+  const server = createServer(app);
+  app.use(express2.json({ limit: "50mb" }));
+  app.use(express2.urlencoded({ limit: "50mb", extended: true }));
+  app.use("/api/trpc/auth", authRateLimiter);
+  app.use("/api/trpc", apiRateLimiter);
+  app.use(
+    "/api/trpc",
+    createExpressMiddleware({ router: appRouter, createContext })
+  );
+  if (process.env.NODE_ENV === "development") {
+    await setupVite(app, server);
+  } else {
+    serveStatic(app);
+  }
+  const preferredPort = parseInt(process.env.PORT || "3000");
+  const port = await findAvailablePort(preferredPort);
+  if (port !== preferredPort) console.log(`Port ${preferredPort} busy, using ${port}`);
+  server.listen(port, () => {
+    console.log(`
+\u{1F6CD}\uFE0F  Sahad Stores \u2192 http://localhost:${port}/`);
+    console.log(`\u{1F4E6}  API         \u2192 http://localhost:${port}/api/trpc`);
+    console.log(`
+\u{1F464}  Staff Login Credentials:`);
+    console.log(`   admin       admin@sahadstores.com      Admin@123456`);
+    console.log(`   manager     manager@sahadstores.com    Manager@123456`);
+    console.log(`   delivery    delivery@sahadstores.com   Delivery@123456`);
+    console.log(`   developer   developer@sahadstores.com  Developer@123456`);
+    console.log(`   buyer       register at /auth          (self-signup)
+`);
+  });
+}
+startServer().catch(console.error);
