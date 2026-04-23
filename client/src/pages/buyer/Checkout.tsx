@@ -26,9 +26,12 @@ export default function Checkout() {
 
   const orderSummary = { subtotal: 28200, tax: 2115, shipping: 0, total: 30315, items: 3 };
 
+  const [placedOrderId, setPlacedOrderId] = useState<string>("");
+
   const createOrderMutation = trpc.orders.create.useMutation({
     onSuccess: (data: any) => {
       toast.success("Order placed successfully!");
+      setPlacedOrderId(data?.orderId ?? "");
       setCurrentStep("done");
     },
     onError: (error: any) => toast.error(error.message || "Failed to place order"),
@@ -57,16 +60,41 @@ export default function Checkout() {
   if (currentStep === "done") {
     return (
       <div className="min-h-screen bg-slate-50">
-        <DashboardHeader title="Order Confirmed" subtitle="Your order has been placed" />
-        <main className="container mx-auto px-4 py-16 max-w-lg text-center">
-          <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <CheckCircle className="w-12 h-12 text-green-600" />
+        <DashboardHeader title="Order Confirmed" subtitle="Your order has been placed successfully" />
+        <main className="container mx-auto px-4 py-12 max-w-lg text-center">
+          {/* Success icon */}
+          <div style={{ width: 96, height: 96, background: "#E8F5E9", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 24px" }}>
+            <CheckCircle style={{ width: 52, height: 52, color: "#1B5E20" }} />
           </div>
-          <h2 className="text-2xl font-bold text-slate-900 mb-2">Order Placed!</h2>
-          <p className="text-slate-600 mb-6">Your order has been confirmed and will be processed soon.</p>
-          <div className="flex gap-3 justify-center">
-            <Button onClick={() => navigate("/orders")}>View My Orders</Button>
-            <Button variant="outline" onClick={() => navigate("/products")}>Continue Shopping</Button>
+
+          <h2 style={{ fontSize: 26, fontWeight: 800, color: "#1A1A2E", marginBottom: 8 }}>Order Placed!</h2>
+          <p style={{ color: "#64748b", marginBottom: 24 }}>
+            Thank you for shopping at Gimbiya Mall. Your order has been confirmed and is being processed.
+          </p>
+
+          {/* Order ID card */}
+          {placedOrderId && (
+            <div style={{ background: "white", border: "1px solid #e2ddd4", borderRadius: 12, padding: "16px 20px", marginBottom: 20, textAlign: "left" }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: ".07em", marginBottom: 6 }}>Order Reference</div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: "#1A1A2E", fontFamily: "monospace" }}>{placedOrderId}</div>
+              <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>Keep this for tracking your delivery</div>
+            </div>
+          )}
+
+          {/* Estimated delivery */}
+          <div style={{ background: "#FFF3E0", border: "1px solid #FFE0B2", borderRadius: 12, padding: "14px 20px", marginBottom: 28, textAlign: "left" }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#E65100", marginBottom: 4 }}>📦 Estimated Delivery</div>
+            <div style={{ fontSize: 13, color: "#475569" }}>2 – 5 business days depending on your location</div>
+          </div>
+
+          {/* Actions */}
+          <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
+            <Button onClick={() => navigate("/orders")} style={{ background: "#1A1A2E", color: "#C8A84B", fontWeight: 700 }}>
+              Track My Order
+            </Button>
+            <Button variant="outline" onClick={() => navigate("/products")} style={{ fontWeight: 600 }}>
+              Continue Shopping
+            </Button>
           </div>
         </main>
       </div>

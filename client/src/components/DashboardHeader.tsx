@@ -55,20 +55,32 @@ const roleNav: Record<string, { label: string; path: string; icon: any }[]> = {
     { label: "Dashboard", path: "/developer",           icon: LayoutDashboard },
     { label: "Analytics", path: "/developer/analytics", icon: BarChart2 },
   ],
+  stock_manager: [
+    { label: "Dashboard",    path: "/stock-manager",           icon: LayoutDashboard },
+    { label: "Adjust Stock", path: "/stock-manager/adjust",    icon: Warehouse },
+    { label: "Low Stock",    path: "/stock-manager/low-stock", icon: Package },
+    { label: "History",      path: "/stock-manager/history",   icon: ClipboardList },
+  ],
 };
 
 const roleBadge: Record<string, string> = {
-  admin:     "bg-red-100 text-red-800",
-  manager:   "bg-blue-100 text-blue-800",
-  delivery:  "bg-amber-100 text-amber-800",
-  reader:    "bg-purple-100 text-purple-800",
-  developer: "bg-green-100 text-green-800",
-  buyer:     "bg-slate-100 text-slate-700",
+  admin:         "bg-red-100 text-red-800",
+  manager:       "bg-blue-100 text-blue-800",
+  stock_manager: "bg-teal-100 text-teal-800",
+  delivery:      "bg-amber-100 text-amber-800",
+  reader:        "bg-purple-100 text-purple-800",
+  developer:     "bg-green-100 text-green-800",
+  buyer:         "bg-slate-100 text-slate-700",
 };
 
 const roleLabel: Record<string, string> = {
-  admin: "Admin", manager: "Manager", delivery: "Delivery",
-  reader: "Affiliate", developer: "Developer", buyer: "Buyer",
+  admin:         "Admin",
+  manager:       "Manager",
+  stock_manager: "Stock Manager",
+  delivery:      "Delivery",
+  reader:        "Affiliate",
+  developer:     "Developer",
+  buyer:         "Buyer",
 };
 
 export default function DashboardHeader({ title, subtitle }: DashboardHeaderProps) {

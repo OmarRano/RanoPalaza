@@ -52,7 +52,7 @@ export function ManusDialog({
             <DialogTitle className="text-xl font-semibold text-slate-900">{title}</DialogTitle>
           )}
           <DialogDescription className="text-sm text-slate-500">
-            Please sign in to your Sahad Stores account to continue.
+            Please sign in to your Gimbiya Mall account to continue.
           </DialogDescription>
         </div>
         <DialogFooter className="px-6 pb-6">
