@@ -65,6 +65,13 @@ export const adminOrManagerProcedure = protectedProcedure.use(({ ctx, next }) =>
   return next({ ctx });
 });
 
+export const adminOrDeveloperProcedure = protectedProcedure.use(({ ctx, next }) => {
+  if (ctx.user.role !== "admin" && ctx.user.role !== "developer") {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Only admins or developers can access this resource." });
+  }
+  return next({ ctx });
+});
+
 export const staffProcedure = protectedProcedure.use(({ ctx, next }) => {
   const staffRoles = ["admin", "manager", "stock_manager", "delivery", "developer"];
   if (!staffRoles.includes(ctx.user.role)) {

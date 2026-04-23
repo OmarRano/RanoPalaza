@@ -29,7 +29,6 @@ import BuyerProfile   from "@/pages/buyer/BuyerProfile";
 // Admin
 import AdminDashboard      from "@/pages/admin/AdminDashboard";
 import SalesAnalytics      from "@/pages/admin/SalesAnalytics";
-import UserManagement      from "@/pages/admin/UserManagement";
 import AffiliateManagement from "@/pages/admin/AffiliateManagement";
 
 // Manager
@@ -51,6 +50,7 @@ import ReferralManagement from "@/pages/affiliate/ReferralManagement";
 // Developer
 import DeveloperDashboard from "@/pages/developer/DeveloperDashboard";
 import PlatformAnalytics  from "@/pages/developer/PlatformAnalytics";
+import UserManagement     from "@/pages/developer/UserManagement";
 
 // Stock Manager
 import StockManagerDashboard from "@/pages/stockmanager/StockManagerDashboard";
@@ -64,6 +64,16 @@ import InventoryHistory      from "@/pages/stockmanager/InventoryHistory";
 // ─────────────────────────────────────────────────────────────────────────────
 
 const ROLES = [
+<<<<<<< HEAD
+  { label: "🏠 Home",       path: "/",           color: "#475569" },
+  { label: "🛍 Products",   path: "/products",    color: "#0891b2" },
+  { label: "🛒 Buyer",      path: "/buyer",       color: "#2563eb" },
+  { label: "🛡 Admin",      path: "/admin",       color: "#dc2626" },
+  { label: "📦 Stock Manager",    path: "/manager",     color: "#d97706" },
+  { label: "🚚 Delivery",   path: "/delivery",    color: "#16a34a" },
+  { label: "🔗 Affiliate",  path: "/affiliate",   color: "#9333ea" },
+  { label: "💻 Developer",  path: "/developer",   color: "#4f46e5" },
+=======
   { label: "🏠 Home",       path: "/",               color: "#475569" },
   { label: "🛍 Products",   path: "/products",        color: "#0891b2" },
   { label: "🛒 Buyer",      path: "/buyer",           color: "#2563eb" },
@@ -73,6 +83,7 @@ const ROLES = [
   { label: "🚚 Delivery",   path: "/delivery",        color: "#16a34a" },
   { label: "🔗 Affiliate",  path: "/affiliate",       color: "#9333ea" },
   { label: "💻 Developer",  path: "/developer",       color: "#4f46e5" },
+>>>>>>> 542623c088367dbfd193b54e0028d3e510df352c
 ];
 
 const SUB: Record<string, { label: string; path: string }[]> = {
@@ -81,12 +92,18 @@ const SUB: Record<string, { label: string; path: string }[]> = {
   orders:     [{ label: "Cart", path: "/cart" }, { label: "Orders", path: "/orders" }, { label: "Checkout", path: "/checkout" }, { label: "Profile", path: "/profile" }],
   checkout:   [{ label: "Cart", path: "/cart" }, { label: "Orders", path: "/orders" }, { label: "Checkout", path: "/checkout" }, { label: "Profile", path: "/profile" }],
   profile:    [{ label: "Cart", path: "/cart" }, { label: "Orders", path: "/orders" }, { label: "Checkout", path: "/checkout" }, { label: "Profile", path: "/profile" }],
+<<<<<<< HEAD
+  admin:      [{ label: "Analytics", path: "/admin/analytics" }, { label: "Affiliates", path: "/admin/affiliates" }],
+  manager:    [{ label: "Products", path: "/manager/products" }, { label: "Inventory", path: "/manager/inventory" }, { label: "Categories", path: "/manager/categories" }],
+  delivery:   [{ label: "Orders", path: "/delivery/orders" }],
+=======
   admin:      [{ label: "Users", path: "/admin/users" }, { label: "Analytics", path: "/admin/analytics" }, { label: "Affiliates", path: "/admin/affiliates" }],
   manager:        [{ label: "Products", path: "/manager/products" }, { label: "Inventory", path: "/manager/inventory" }, { label: "Categories", path: "/manager/categories" }],
   "stock-manager":[{ label: "Adjust Stock", path: "/stock-manager/adjust" }, { label: "Low Stock", path: "/stock-manager/low-stock" }, { label: "History", path: "/stock-manager/history" }],
   delivery:       [{ label: "Orders", path: "/delivery/orders" }],
+>>>>>>> 542623c088367dbfd193b54e0028d3e510df352c
   affiliate:  [{ label: "Referrals", path: "/affiliate/referrals" }, { label: "Earnings", path: "/affiliate/earnings" }],
-  developer:  [{ label: "Analytics", path: "/developer/analytics" }],
+  developer:  [{ label: "Analytics", path: "/developer/analytics" }, { label: "Users", path: "/developer/users" }],
 };
 
 function DemoNav() {
@@ -178,7 +195,6 @@ export default function App() {
           {/* Admin */}
           <Route path="/admin">             <AdminDashboard /></Route>
           <Route path="/admin/analytics">   <SalesAnalytics /></Route>
-          <Route path="/admin/users">       <UserManagement /></Route>
           <Route path="/admin/affiliates">  <AffiliateManagement /></Route>
 
           {/* Manager */}
@@ -200,6 +216,7 @@ export default function App() {
           {/* Developer */}
           <Route path="/developer">           <DeveloperDashboard /></Route>
           <Route path="/developer/analytics"> <PlatformAnalytics /></Route>
+          <Route path="/developer/users">     <UserManagement /></Route>
 
           {/* Stock Manager */}
           <Route path="/stock-manager">             <StockManagerDashboard /></Route>

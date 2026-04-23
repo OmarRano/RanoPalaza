@@ -10,9 +10,13 @@ import { nanoid } from "nanoid";
 import bcrypt from "bcryptjs";
 import {
   adminProcedure, managerProcedure, deliveryProcedure,
+<<<<<<< HEAD
+  readerProcedure, buyerProcedure, adminOrManagerProcedure, adminOrDeveloperProcedure, staffProcedure, developerProcedure,
+=======
   readerProcedure, buyerProcedure, adminOrManagerProcedure,
   staffProcedure, developerProcedure,
   stockManagerProcedure, inventoryProcedure,
+>>>>>>> 542623c088367dbfd193b54e0028d3e510df352c
 } from "./rbac";
 import {
   getProductById, getProductsByCategory, searchProducts,
@@ -253,13 +257,13 @@ export const appRouter = router({
   admin: router({
     stats:      adminProcedure.query(() => getPlatformStats()),
     salesStats: adminProcedure.query(() => getTotalSalesStats()),
-    users: adminProcedure
+    users: adminOrDeveloperProcedure
       .input(z.object({ role: z.string().optional(), limit: z.number().default(50), offset: z.number().default(0) }))
       .query(({ input }) => getAllUsers(input.role, input.limit, input.offset)),
-    updateUserRole: adminProcedure
+    updateUserRole: adminOrDeveloperProcedure
       .input(z.object({ userId: z.string(), role: z.string() }))
       .mutation(async ({ input }) => { await updateUserRole(input.userId, input.role); return { success: true }; }),
-    enableAffiliate: adminProcedure
+    enableAffiliate: adminOrDeveloperProcedure
       .input(z.object({ userId: z.string(), enable: z.boolean() }))
       .mutation(async ({ input }) => { await setUserAffiliate(input.userId, input.enable); return { success: true }; }),
     allOrders: adminProcedure
