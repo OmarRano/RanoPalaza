@@ -10,13 +10,9 @@ import { nanoid } from "nanoid";
 import bcrypt from "bcryptjs";
 import {
   adminProcedure, managerProcedure, deliveryProcedure,
-<<<<<<< HEAD
-  readerProcedure, buyerProcedure, adminOrManagerProcedure, adminOrDeveloperProcedure, staffProcedure, developerProcedure,
-=======
   readerProcedure, buyerProcedure, adminOrManagerProcedure,
-  staffProcedure, developerProcedure,
+  adminOrDeveloperProcedure, staffProcedure, developerProcedure,
   stockManagerProcedure, inventoryProcedure,
->>>>>>> 542623c088367dbfd193b54e0028d3e510df352c
 } from "./rbac";
 import {
   getProductById, getProductsByCategory, searchProducts,
