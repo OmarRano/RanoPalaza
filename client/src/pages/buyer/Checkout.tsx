@@ -92,7 +92,7 @@ export default function Checkout() {
             <Button onClick={() => navigate("/orders")} style={{ background: "#1A1A2E", color: "#C8A84B", fontWeight: 700 }}>
               Track My Order
             </Button>
-            <Button variant="outline" onClick={() => navigate("/products")} style={{ fontWeight: 600 }}>
+            <Button variant="outline" onClick={() => navigate("/mall")} style={{ fontWeight: 600 }}>
               Continue Shopping
             </Button>
           </div>

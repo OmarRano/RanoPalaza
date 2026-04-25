@@ -1,21 +1,21 @@
 /**
- * App.tsx — Demo mode router
+ * App.tsx — Production Router
  *
- * All routes are publicly accessible — no auth check.
- * DemoNavigator bar lets anyone jump between every role dashboard.
- *
- * To switch to production:
- *  1. Wrap protected routes with <ProtectedRoute> again
- *  2. Replace useAuth.ts with the real tRPC-powered version
+ * Protected routes checked by useAuth.
+ * RoleBasedNavbar shows only when user is logged in.
  */
-import { Switch, Route, useLocation } from "wouter";
+import { Switch, Route } from "wouter";
 import { Toaster } from "@/components/ui/sonner";
+import { AuthProvider } from "@/_core/contexts/AuthContext";
+import RoleBasedNavbar from "@/components/RoleBasedNavbar";
 
 // Public
 import Home         from "@/pages/Home";
 import Auth         from "@/pages/Auth";
 import NotFound     from "@/pages/NotFound";
 import ProductDetail from "@/pages/ProductDetail";
+import BuildingView from "@/pages/BuildingView";
+import StorePage    from "@/pages/StorePage";
 
 // Buyer
 import ProductCatalog from "@/pages/buyer/ProductCatalog";
@@ -59,111 +59,22 @@ import LowStockAlerts        from "@/pages/stockmanager/LowStockAlerts";
 import InventoryHistory      from "@/pages/stockmanager/InventoryHistory";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Demo Navigator — floating bar at bottom of every page
-// Click any button to jump straight to that role's dashboard
-// ─────────────────────────────────────────────────────────────────────────────
-
-const ROLES = [
-  { label: "🏠 Home",       path: "/",               color: "#475569" },
-  { label: "🛍 Products",   path: "/products",        color: "#0891b2" },
-  { label: "🛒 Buyer",      path: "/buyer",           color: "#2563eb" },
-  { label: "🛡 Admin",      path: "/admin",           color: "#dc2626" },
-  { label: "📦 Manager",    path: "/manager",         color: "#d97706" },
-  { label: "🗂 StockMgr",   path: "/stock-manager",   color: "#00695c" },
-  { label: "🚚 Delivery",   path: "/delivery",        color: "#16a34a" },
-  { label: "🔗 Affiliate",  path: "/affiliate",       color: "#9333ea" },
-  { label: "💻 Developer",  path: "/developer",       color: "#4f46e5" },
-];
-
-const SUB: Record<string, { label: string; path: string }[]> = {
-  buyer:      [{ label: "Cart", path: "/cart" }, { label: "Orders", path: "/orders" }, { label: "Checkout", path: "/checkout" }, { label: "Profile", path: "/profile" }],
-  cart:       [{ label: "Cart", path: "/cart" }, { label: "Orders", path: "/orders" }, { label: "Checkout", path: "/checkout" }, { label: "Profile", path: "/profile" }],
-  orders:     [{ label: "Cart", path: "/cart" }, { label: "Orders", path: "/orders" }, { label: "Checkout", path: "/checkout" }, { label: "Profile", path: "/profile" }],
-  checkout:   [{ label: "Cart", path: "/cart" }, { label: "Orders", path: "/orders" }, { label: "Checkout", path: "/checkout" }, { label: "Profile", path: "/profile" }],
-  profile:    [{ label: "Cart", path: "/cart" }, { label: "Orders", path: "/orders" }, { label: "Checkout", path: "/checkout" }, { label: "Profile", path: "/profile" }],
-  admin:      [{ label: "Analytics", path: "/admin/analytics" }, { label: "Affiliates", path: "/admin/affiliates" }],
-  manager:    [{ label: "Products", path: "/manager/products" }, { label: "Inventory", path: "/manager/inventory" }, { label: "Categories", path: "/manager/categories" }],
-  "stock-manager":[{ label: "Adjust Stock", path: "/stock-manager/adjust" }, { label: "Low Stock", path: "/stock-manager/low-stock" }, { label: "History", path: "/stock-manager/history" }],
-  delivery:   [{ label: "Orders", path: "/delivery/orders" }],
-  affiliate:  [{ label: "Referrals", path: "/affiliate/referrals" }, { label: "Earnings", path: "/affiliate/earnings" }],
-  developer:  [{ label: "Analytics", path: "/developer/analytics" }, { label: "Users", path: "/developer/users" }],
-};
-
-function DemoNav() {
-  const [location, navigate] = useLocation();
-  const section = location.split("/")[1] || "home";
-  const subLinks = SUB[section] ?? [];
-
-  return (
-    <div style={{
-      position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 9999,
-      background: "rgba(15,23,42,0.96)", backdropFilter: "blur(16px)",
-      borderTop: "1px solid rgba(255,255,255,.1)",
-      padding: "10px 16px 14px",
-      fontFamily: "'Outfit', system-ui, sans-serif",
-    }}>
-      {/* Top row: label + current path */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-        <span style={{ fontSize: 11, fontWeight: 700, color: "#64748b", letterSpacing: ".08em", textTransform: "uppercase" }}>
-          🎭 Demo Navigator
-        </span>
-        <span style={{ fontSize: 11, color: "#475569", fontFamily: "monospace" }}>{location}</span>
-      </div>
-
-      {/* Role buttons */}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: subLinks.length ? 8 : 0 }}>
-        {ROLES.map(({ label, path, color }) => {
-          const seg = path === "/" ? "" : path.split("/")[1];
-          const active = path === "/" ? location === "/" : location === path || location.startsWith(path + "/");
-          return (
-            <button key={path} onClick={() => navigate(path)} style={{
-              padding: "6px 13px", borderRadius: 8, border: "none", cursor: "pointer",
-              fontSize: 12, fontWeight: 700, transition: ".15s", whiteSpace: "nowrap",
-              background: active ? color : "rgba(255,255,255,.1)",
-              color: active ? "#fff" : "rgba(255,255,255,.75)",
-              boxShadow: active ? `0 2px 12px ${color}60` : "none",
-              transform: active ? "translateY(-1px)" : "none",
-            }}>
-              {label}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Sub-page links */}
-      {subLinks.length > 0 && (
-        <div style={{ display: "flex", alignItems: "center", gap: 6, paddingTop: 6, borderTop: "1px solid rgba(255,255,255,.08)", flexWrap: "wrap" }}>
-          <span style={{ fontSize: 10, color: "#64748b", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".07em" }}>Pages:</span>
-          {subLinks.map(({ label, path }) => (
-            <button key={path} onClick={() => navigate(path)} style={{
-              padding: "4px 11px", borderRadius: 6, border: "1px solid rgba(255,255,255,.15)",
-              background: location === path ? "rgba(255,255,255,.2)" : "transparent",
-              color: location === path ? "#fff" : "rgba(255,255,255,.6)",
-              fontSize: 11, fontWeight: 600, cursor: "pointer", transition: ".15s",
-            }}>
-              {label}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Router
 // ─────────────────────────────────────────────────────────────────────────────
 export default function App() {
   return (
-    <>
+    <AuthProvider>
       <Toaster richColors position="top-right" />
+      <RoleBasedNavbar />
 
-      {/* pb-32 so DemoNav doesn't cover page content */}
-      <div style={{ paddingBottom: 110 }}>
+      {/* pt-20 so navbar doesn't cover page content */}
+      <div style={{ paddingTop: 80 }}>
         <Switch>
           {/* Public */}
           <Route path="/"             component={Home} />
           <Route path="/auth"         component={Auth} />
+          <Route path="/mall"         component={BuildingView} />
+          <Route path="/store/:id"    component={StorePage} />
           <Route path="/products/:id" component={ProductDetail} />
           <Route path="/products">    <ProductCatalog /></Route>
 
@@ -211,8 +122,6 @@ export default function App() {
           <Route component={NotFound} />
         </Switch>
       </div>
-
-      <DemoNav />
-    </>
+    </AuthProvider>
   );
 }

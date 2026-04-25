@@ -42,7 +42,7 @@ export default function ShoppingCartPage() {
   if (items.length === 0) return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
       <div className="container mx-auto px-4 py-8">
-        <Button variant="ghost" onClick={() => navigate("/products")} className="mb-6 gap-2">
+        <Button variant="ghost" onClick={() => navigate("/mall")} className="mb-6 gap-2">
           <ArrowLeft className="w-4 h-4" /> Continue Shopping
         </Button>
         <div className="flex flex-col items-center justify-center py-24">
@@ -51,7 +51,7 @@ export default function ShoppingCartPage() {
           </div>
           <h2 className="text-2xl font-bold text-slate-800 mb-2">Your cart is empty</h2>
           <p className="text-slate-500 mb-8">Explore our products and add items to get started.</p>
-          <Button onClick={() => navigate("/products")} size="lg" className="gap-2">
+          <Button onClick={() => navigate("/mall")} size="lg" className="gap-2">
             <Package className="w-5 h-5" /> Browse Products
           </Button>
         </div>
@@ -64,7 +64,7 @@ export default function ShoppingCartPage() {
       <div className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <Button variant="ghost" onClick={() => navigate("/products")} className="mb-2 gap-2 pl-0">
+            <Button variant="ghost" onClick={() => navigate("/mall")} className="mb-2 gap-2 pl-0">
               <ArrowLeft className="w-4 h-4" /> Continue Shopping
             </Button>
             <h1 className="text-3xl font-bold text-slate-900">Shopping Cart</h1>

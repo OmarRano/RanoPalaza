@@ -26,6 +26,7 @@ import { Category } from "./models/Category";
 import { Order } from "./models/Order";
 import { CartItem } from "./models/CartItem";
 import { User } from "./models/User";
+import { Store } from "./models/Store";
 import { calcFinalPrice, calcOrderTotals } from "./pricing";
 
 const paginationInput = z.object({
@@ -58,20 +59,28 @@ export const appRouter = router({
         name: z.string().min(1),
         description: z.string().optional(),
         categoryId: z.string(),
+        storeId: z.string().optional(), // For virtual mall
         costPrice: z.number().min(0),
         baseSalePrice: z.number().min(0),
         commissionPercent: z.number().min(0).max(100).default(10),
         stockQuantity: z.number().min(0).default(0),
         images: z.array(z.string()).default([]),
+        arEnabled: z.boolean().default(false), // Virtual mall
+        limitedOffer: z.string().optional(), // Virtual mall
       }))
       .mutation(async ({ input, ctx }) => {
         const finalPrice = calcFinalPrice(input.baseSalePrice, input.commissionPercent);
         const p = await Product.create({
           ...input,
           categoryId: new mongoose.Types.ObjectId(input.categoryId),
+          storeId: input.storeId ? new mongoose.Types.ObjectId(input.storeId) : undefined,
           finalPrice,
           createdBy: (ctx.user as any)._id,
         });
+        // If storeId provided, add product to store's products array
+        if (input.storeId) {
+          await Store.findByIdAndUpdate(input.storeId, { $push: { products: p._id } });
+        }
         return { success: true, id: p._id.toString() };
       }),
     update: managerProcedure
@@ -101,6 +110,82 @@ export const appRouter = router({
       .input(z.object({ id: z.string() }))
       .mutation(async ({ input }) => {
         await Product.findByIdAndUpdate(input.id, { isActive: false });
+        return { success: true };
+      }),
+  }),
+
+  // ── STORES ──────────────────────────────────────────────────────────────────
+  stores: router({
+    list: publicProcedure
+      .input(paginationInput)
+      .query(async ({ input }) =>
+        Store.find({ isActive: true }).populate('products').skip(input.offset).limit(input.limit).lean()
+      ),
+    detail: publicProcedure
+      .input(z.object({ id: z.string() }))
+      .query(async ({ input }) => {
+        const store = await Store.findById(input.id).populate('products').lean();
+        if (!store) throw new Error("Store not found");
+        return store;
+      }),
+    create: adminOrManagerProcedure
+      .input(z.object({
+        name: z.string().min(1),
+        category: z.enum(['store', 'office']).default('store'),
+        description: z.string().optional(),
+        bannerImageUrl: z.string().optional(),
+        buildingLevel: z.number().default(1),
+        location: z.object({ x: z.number(), y: z.number() }).optional(),
+        marketingPitch: z.object({
+          headline: z.string().optional(),
+          promoText: z.string().optional(),
+          ctaLink: z.string().optional(),
+          videoUrl: z.string().optional(),
+        }).optional(),
+        flyers: z.array(z.object({
+          title: z.string(),
+          description: z.string().optional(),
+          imageUrl: z.string().optional(),
+          validUntil: z.date().optional(),
+        })).default([]),
+      }))
+      .mutation(async ({ input }) => {
+        const store = await Store.create(input);
+        return { success: true, id: store._id.toString() };
+      }),
+    update: adminOrManagerProcedure
+      .input(z.object({
+        id: z.string(),
+        name: z.string().optional(),
+        description: z.string().optional(),
+        bannerImageUrl: z.string().optional(),
+        buildingLevel: z.number().optional(),
+        location: z.object({ x: z.number(), y: z.number() }).optional(),
+        marketingPitch: z.object({
+          headline: z.string().optional(),
+          promoText: z.string().optional(),
+          ctaLink: z.string().optional(),
+          videoUrl: z.string().optional(),
+        }).optional(),
+        isActive: z.boolean().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { id, ...updates } = input;
+        await Store.findByIdAndUpdate(id, updates);
+        return { success: true };
+      }),
+    addFlyer: adminOrManagerProcedure
+      .input(z.object({
+        storeId: z.string(),
+        flyer: z.object({
+          title: z.string(),
+          description: z.string().optional(),
+          imageUrl: z.string().optional(),
+          validUntil: z.date().optional(),
+        }),
+      }))
+      .mutation(async ({ input }) => {
+        await Store.findByIdAndUpdate(input.storeId, { $push: { flyers: input.flyer } });
         return { success: true };
       }),
   }),

@@ -75,7 +75,7 @@ export default function Cart() {
                 <ShoppingCart className="w-16 h-16 text-slate-300 mx-auto mb-4" />
                 <h3 className="text-xl font-semibold text-slate-900 mb-2">Cart is Empty</h3>
                 <p className="text-slate-600 mb-6">Add items to get started</p>
-                <Button onClick={() => navigate("/products")} size="lg">
+                <Button onClick={() => navigate("/mall")} size="lg">
                   Continue Shopping
                 </Button>
               </div>
@@ -195,7 +195,7 @@ export default function Cart() {
 
                 <Button
                   variant="outline"
-                  onClick={() => navigate("/products")}
+                  onClick={() => navigate("/mall")}
                   className="w-full"
                 >
                   Continue Shopping

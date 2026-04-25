@@ -108,7 +108,7 @@ export default function ProductCatalog() {
                 <Card
                   key={product.id}
                   className="hover:shadow-lg transition-shadow cursor-pointer group"
-                  onClick={() => navigate(`/product/${product.id}`)}
+                  onClick={() => navigate(`/products/${product.id}`)}
                 >
                   <CardHeader className="pb-3">
                     <div className="w-full h-40 bg-gradient-to-br from-blue-100 to-blue-50 rounded-lg mb-3 flex items-center justify-center group-hover:from-blue-200 group-hover:to-blue-100 transition-colors">
@@ -175,7 +175,7 @@ export default function ProductCatalog() {
               <Card
                 key={product.id}
                 className="hover:shadow-lg transition-shadow cursor-pointer group"
-                onClick={() => navigate(`/product/${product.id}`)}
+                onClick={() => navigate(`/products/${product.id}`)}
               >
                 <CardHeader className="pb-3">
                   <div className="w-full h-40 bg-gradient-to-br from-slate-100 to-slate-50 rounded-lg mb-3 flex items-center justify-center group-hover:from-slate-200 group-hover:to-slate-100 transition-colors">

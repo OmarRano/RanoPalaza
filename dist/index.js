@@ -18,7 +18,6 @@ import bcrypt from "bcryptjs";
 var userSchema, User;
 var init_User = __esm({
   "server/models/User.ts"() {
-    "use strict";
     userSchema = new Schema(
       {
         name: { type: String, required: true, trim: true, minlength: [2, "Name must be at least 2 characters"] },
@@ -34,7 +33,7 @@ var init_User = __esm({
         phone: { type: String, trim: true },
         role: {
           type: String,
-          enum: ["admin", "manager", "delivery", "reader", "buyer", "developer"],
+          enum: ["admin", "manager", "stock_manager", "delivery", "reader", "buyer", "developer"],
           default: "buyer"
         },
         profileImage: { type: String },
@@ -87,7 +86,7 @@ import bcrypt2 from "bcryptjs";
 // server/_core/auth.ts
 import { SignJWT, jwtVerify } from "jose";
 import { parse as parseCookieHeader } from "cookie";
-var COOKIE_NAME = "sahad_session";
+var COOKIE_NAME = "gimbiya_session";
 var ONE_YEAR_MS = 1e3 * 60 * 60 * 24 * 365;
 function getSecretKey() {
   const secret = process.env.JWT_SECRET;
@@ -195,7 +194,7 @@ var authRouter = router({
     ctx.res.cookie(COOKIE_NAME, token, getSessionCookieOptions(ctx.req));
     return {
       success: true,
-      message: "Account created successfully! Welcome to Sahad Stores.",
+      message: "Account created successfully! Welcome to Gimbiya Mall.",
       role: "buyer"
     };
   }),
@@ -271,6 +270,7 @@ var authRouter = router({
 import { z as z2 } from "zod";
 import mongoose7 from "mongoose";
 import { nanoid } from "nanoid";
+import bcrypt3 from "bcryptjs";
 
 // server/rbac.ts
 import { TRPCError as TRPCError2 } from "@trpc/server";
@@ -310,6 +310,18 @@ var developerProcedure = protectedProcedure.use(({ ctx, next }) => {
   }
   return next({ ctx });
 });
+var stockManagerProcedure = protectedProcedure.use(({ ctx, next }) => {
+  if (ctx.user.role !== "stock_manager") {
+    throw new TRPCError2({ code: "FORBIDDEN", message: "Only stock managers can access this resource." });
+  }
+  return next({ ctx });
+});
+var inventoryProcedure = protectedProcedure.use(({ ctx, next }) => {
+  if (ctx.user.role !== "manager" && ctx.user.role !== "stock_manager" && ctx.user.role !== "admin" && ctx.user.role !== "developer") {
+    throw new TRPCError2({ code: "FORBIDDEN", message: "Only inventory staff can access this resource." });
+  }
+  return next({ ctx });
+});
 var adminOrManagerProcedure = protectedProcedure.use(({ ctx, next }) => {
   if (ctx.user.role !== "admin" && ctx.user.role !== "manager") {
     throw new TRPCError2({ code: "FORBIDDEN", message: "Only admins or managers can access this resource." });
@@ -323,7 +335,7 @@ var adminOrDeveloperProcedure = protectedProcedure.use(({ ctx, next }) => {
   return next({ ctx });
 });
 var staffProcedure = protectedProcedure.use(({ ctx, next }) => {
-  const staffRoles = ["admin", "manager", "delivery", "developer"];
+  const staffRoles = ["admin", "manager", "stock_manager", "delivery", "developer"];
   if (!staffRoles.includes(ctx.user.role)) {
     throw new TRPCError2({ code: "FORBIDDEN", message: "Only staff can access this resource." });
   }
@@ -524,14 +536,45 @@ async function getTotalSalesStats() {
 }
 
 // server/routers.ts
+init_User();
+
+// server/pricing.ts
+var TRANSACTION_FEE_RATE = 0.015;
+function calcTransactionFee(orderAmount) {
+  return parseFloat((orderAmount * TRANSACTION_FEE_RATE).toFixed(2));
+}
 function calcFinalPrice(baseSalePrice, commissionPercent) {
   return parseFloat((baseSalePrice * (1 + commissionPercent / 100)).toFixed(2));
 }
+function calcCommissionAmount(finalPrice, baseSalePrice, quantity) {
+  return parseFloat(((finalPrice - baseSalePrice) * quantity).toFixed(2));
+}
+function calcOrderTotals(items) {
+  const subtotal = items.reduce((sum, i) => sum + i.finalPrice * i.quantity, 0);
+  const commissionTotal = items.reduce(
+    (sum, i) => sum + calcCommissionAmount(i.finalPrice, i.baseSalePrice, i.quantity),
+    0
+  );
+  const transactionFee = calcTransactionFee(subtotal);
+  return {
+    subtotal: parseFloat(subtotal.toFixed(2)),
+    transactionFee,
+    totalAmount: parseFloat(subtotal.toFixed(2)),
+    // buyer pays subtotal; fee is platform's cut of commission
+    commissionTotal: parseFloat(commissionTotal.toFixed(2))
+  };
+}
+
+// server/routers.ts
+var paginationInput = z2.object({
+  limit: z2.number().min(1).max(100).default(20),
+  offset: z2.number().min(0).default(0)
+});
 var appRouter = router({
   auth: authRouter,
-  // PRODUCTS
+  // ── PRODUCTS ─────────────────────────────────────────────────────────────────
   products: router({
-    list: publicProcedure.input(z2.object({ limit: z2.number().default(20), offset: z2.number().default(0) })).query(
+    list: publicProcedure.input(paginationInput).query(
       async ({ input }) => Product.find({ isActive: true }).populate("categoryId").skip(input.offset).limit(input.limit).lean()
     ),
     featured: publicProcedure.query(() => getFeaturedProducts(10)),
@@ -539,17 +582,22 @@ var appRouter = router({
     search: publicProcedure.input(z2.object({ query: z2.string(), limit: z2.number().default(20), offset: z2.number().default(0) })).query(({ input }) => searchProducts(input.query, input.limit, input.offset)),
     detail: publicProcedure.input(z2.object({ id: z2.string() })).query(({ input }) => getProductById(input.id)),
     create: managerProcedure.input(z2.object({
-      name: z2.string(),
+      name: z2.string().min(1),
       description: z2.string().optional(),
       categoryId: z2.string(),
-      costPrice: z2.number(),
-      baseSalePrice: z2.number(),
-      commissionPercent: z2.number().default(10),
-      stockQuantity: z2.number().default(0),
+      costPrice: z2.number().min(0),
+      baseSalePrice: z2.number().min(0),
+      commissionPercent: z2.number().min(0).max(100).default(10),
+      stockQuantity: z2.number().min(0).default(0),
       images: z2.array(z2.string()).default([])
     })).mutation(async ({ input, ctx }) => {
       const finalPrice = calcFinalPrice(input.baseSalePrice, input.commissionPercent);
-      const p = await Product.create({ ...input, categoryId: new mongoose7.Types.ObjectId(input.categoryId), finalPrice, createdBy: ctx.user._id });
+      const p = await Product.create({
+        ...input,
+        categoryId: new mongoose7.Types.ObjectId(input.categoryId),
+        finalPrice,
+        createdBy: ctx.user._id
+      });
       return { success: true, id: p._id.toString() };
     }),
     update: managerProcedure.input(z2.object({
@@ -565,7 +613,7 @@ var appRouter = router({
       const { id, ...updates } = input;
       const product = await Product.findById(id);
       if (!product) throw new Error("Product not found");
-      if (updates.baseSalePrice || updates.commissionPercent) {
+      if (updates.baseSalePrice !== void 0 || updates.commissionPercent !== void 0) {
         const price = updates.baseSalePrice ?? product.baseSalePrice;
         const pct = updates.commissionPercent ?? product.commissionPercent;
         updates.finalPrice = calcFinalPrice(price, pct);
@@ -578,7 +626,7 @@ var appRouter = router({
       return { success: true };
     })
   }),
-  // CATEGORIES
+  // ── CATEGORIES ───────────────────────────────────────────────────────────────
   categories: router({
     list: publicProcedure.query(() => getAllCategories()),
     create: adminOrManagerProcedure.input(z2.object({ name: z2.string(), description: z2.string().optional(), image: z2.string().optional() })).mutation(async ({ input }) => {
@@ -591,7 +639,7 @@ var appRouter = router({
       return { success: true };
     })
   }),
-  // CART
+  // ── CART ─────────────────────────────────────────────────────────────────────
   cart: router({
     list: buyerProcedure.query(async ({ ctx }) => getCartItems(ctx.user._id.toString())),
     add: buyerProcedure.input(z2.object({ productId: z2.string(), quantity: z2.number().min(1) })).mutation(async ({ input, ctx }) => {
@@ -611,9 +659,9 @@ var appRouter = router({
       return { success: true };
     })
   }),
-  // ORDERS
+  // ── ORDERS ───────────────────────────────────────────────────────────────────
   orders: router({
-    list: buyerProcedure.input(z2.object({ limit: z2.number().default(20), offset: z2.number().default(0) })).query(async ({ input, ctx }) => getUserOrders(ctx.user._id.toString(), input.limit, input.offset)),
+    list: buyerProcedure.input(paginationInput).query(async ({ input, ctx }) => getUserOrders(ctx.user._id.toString(), input.limit, input.offset)),
     detail: publicProcedure.input(z2.object({ orderId: z2.string() })).query(async ({ input }) => {
       const order = await getOrderByOrderId(input.orderId);
       if (!order) throw new Error("Order not found");
@@ -629,47 +677,51 @@ var appRouter = router({
       referralCode: z2.string().optional()
     })).mutation(async ({ input, ctx }) => {
       const userId = ctx.user._id.toString();
-      const cartItems = await getCartItems(userId);
-      if (cartItems.length === 0) throw new Error("Your cart is empty.");
-      let totalAmount = 0;
-      let totalCommission = 0;
-      const items = [];
-      for (const item of cartItems) {
+      const items_raw = await getCartItems(userId);
+      if (items_raw.length === 0) throw new Error("Your cart is empty.");
+      const lineItems = items_raw.map((item) => {
         const p = item.productId;
-        const commission = p.baseSalePrice * p.commissionPercent / 100;
-        const subtotal = p.finalPrice * item.quantity;
-        totalAmount += subtotal;
-        totalCommission += commission * item.quantity;
-        items.push({
+        return { finalPrice: p.finalPrice, baseSalePrice: p.baseSalePrice, quantity: item.quantity };
+      });
+      const totals = calcOrderTotals(lineItems);
+      const items = items_raw.map((item) => {
+        const p = item.productId;
+        return {
           productId: p._id,
           name: p.name,
           quantity: item.quantity,
           costPrice: p.costPrice,
           baseSalePrice: p.baseSalePrice,
           commissionPercent: p.commissionPercent,
-          commissionAmount: parseFloat((commission * item.quantity).toFixed(2)),
+          commissionAmount: parseFloat(((p.finalPrice - p.baseSalePrice) * item.quantity).toFixed(2)),
           finalPrice: p.finalPrice,
-          subtotal: parseFloat(subtotal.toFixed(2))
-        });
-      }
+          subtotal: parseFloat((p.finalPrice * item.quantity).toFixed(2))
+        };
+      });
       const orderId = `ORD-${nanoid(10).toUpperCase()}`;
       await Order.create({
         orderId,
         buyerId: userId,
         items,
-        totalAmount: parseFloat(totalAmount.toFixed(2)),
-        commissionAmount: parseFloat(totalCommission.toFixed(2)),
-        finalAmount: parseFloat(totalAmount.toFixed(2)),
+        totalAmount: totals.subtotal,
+        commissionAmount: totals.commissionTotal,
+        finalAmount: totals.totalAmount,
         ...input
       });
       await clearCart(userId);
-      return { success: true, orderId, totalAmount: parseFloat(totalAmount.toFixed(2)) };
+      return { success: true, orderId, totalAmount: totals.totalAmount };
     }),
+    // Order cancellation: buyer only, pending/paid only, restores stock
     cancel: buyerProcedure.input(z2.object({ orderId: z2.string() })).mutation(async ({ input, ctx }) => {
       const order = await getOrderByOrderId(input.orderId);
       if (!order) throw new Error("Order not found");
-      if (order.buyerId.toString() !== ctx.user._id.toString()) throw new Error("Not authorised");
-      if (!["pending", "paid"].includes(order.status)) throw new Error("Cannot cancel at this stage");
+      if (order.buyerId.toString() !== ctx.user._id.toString())
+        throw new Error("Not authorised to cancel this order");
+      if (!["pending", "paid"].includes(order.status))
+        throw new Error("Order cannot be cancelled at this stage");
+      for (const item of order.items ?? []) {
+        await Product.findByIdAndUpdate(item.productId, { $inc: { stockQuantity: item.quantity } });
+      }
       await Order.findOneAndUpdate({ orderId: input.orderId }, { status: "cancelled" });
       return { success: true };
     }),
@@ -678,9 +730,9 @@ var appRouter = router({
       return { success: true };
     })
   }),
-  // DELIVERY
+  // ── DELIVERY ─────────────────────────────────────────────────────────────────
   delivery: router({
-    myOrders: deliveryProcedure.input(z2.object({ limit: z2.number().default(20), offset: z2.number().default(0) })).query(async ({ input, ctx }) => getDeliveryOrders(ctx.user._id.toString(), input.limit, input.offset)),
+    myOrders: deliveryProcedure.input(paginationInput).query(async ({ input, ctx }) => getDeliveryOrders(ctx.user._id.toString(), input.limit, input.offset)),
     updateStatus: deliveryProcedure.input(z2.object({ orderId: z2.string(), status: z2.enum(["assigned", "in_transit", "delivered"]) })).mutation(async ({ input }) => {
       const update = { status: input.status };
       if (input.status === "delivered") update.paymentStatus = "paid";
@@ -692,7 +744,7 @@ var appRouter = router({
       return { success: true };
     })
   }),
-  // ADMIN
+  // ── ADMIN ────────────────────────────────────────────────────────────────────
   admin: router({
     stats: adminProcedure.query(() => getPlatformStats()),
     salesStats: adminProcedure.query(() => getTotalSalesStats()),
@@ -709,38 +761,213 @@ var appRouter = router({
       const filter = {};
       if (input.status) filter.status = input.status;
       return Order.find(filter).sort({ createdAt: -1 }).skip(input.offset).limit(input.limit).populate("buyerId", "name email phone").lean();
+    }),
+    onboardStockManager: adminProcedure.input(z2.object({
+      name: z2.string().min(2),
+      email: z2.string().email(),
+      password: z2.string().min(8),
+      phone: z2.string().optional()
+    })).mutation(async ({ input }) => {
+      const existing = await User.findOne({ email: input.email.toLowerCase() });
+      if (existing) throw new Error("A user with this email already exists");
+      const salt = await bcrypt3.genSalt(12);
+      const passwordHash = await bcrypt3.hash(input.password, salt);
+      const user = await User.create({ name: input.name, email: input.email.toLowerCase(), passwordHash, phone: input.phone, role: "stock_manager", isActive: true });
+      return { success: true, userId: user._id.toString() };
+    }),
+    listStaff: adminProcedure.input(z2.object({ role: z2.string().optional() })).query(async ({ input }) => {
+      const filter = { role: { $in: ["manager", "stock_manager", "delivery"] } };
+      if (input.role) filter.role = input.role;
+      return User.find(filter).select("-passwordHash").sort({ createdAt: -1 }).lean();
+    }),
+    toggleUserActive: adminProcedure.input(z2.object({ userId: z2.string(), isActive: z2.boolean() })).mutation(async ({ input }) => {
+      await User.findByIdAndUpdate(input.userId, { isActive: input.isActive });
+      return { success: true };
     })
   }),
-  // AFFILIATE
+  // ── AFFILIATE ────────────────────────────────────────────────────────────────
   affiliate: router({
     getReferralLink: readerProcedure.query(async ({ ctx }) => {
       const userId = ctx.user._id.toString();
       const code = `REF-${userId.slice(-8).toUpperCase()}`;
-      const baseUrl = process.env.VITE_APP_URL || "http://localhost:3000";
+      const baseUrl = process.env.VITE_APP_URL ?? "http://localhost:3000";
       return { code, url: `${baseUrl}/products?ref=${code}` };
     }),
     myStats: readerProcedure.query(async ({ ctx }) => {
       const userId = ctx.user._id.toString();
-      const totalReferrals = await Order.countDocuments({ referralCode: { $regex: userId.slice(-8).toUpperCase() } });
+      const code = `REF-${userId.slice(-8).toUpperCase()}`;
+      const totalReferrals = await Order.countDocuments({ referralCode: code });
       return { totalReferrals, totalEarnings: 0 };
     })
   }),
-  // INVENTORY
+  // ── INVENTORY (shared: manager + stock_manager + admin + developer) ───────────
   inventory: router({
-    adjustStock: managerProcedure.input(z2.object({ productId: z2.string(), quantityChange: z2.number(), reason: z2.string() })).mutation(async ({ input }) => {
+    list: inventoryProcedure.input(paginationInput).query(
+      async ({ input }) => Product.find({ isActive: true }).select("name stockQuantity soldQuantity isFeatured categoryId images").populate("categoryId", "name").skip(input.offset).limit(input.limit).lean()
+    ),
+    adjustStock: inventoryProcedure.input(z2.object({
+      productId: z2.string(),
+      quantityChange: z2.number(),
+      reason: z2.enum(["restock", "sale_adjustment", "damage", "return", "correction", "other"]),
+      notes: z2.string().optional()
+    })).mutation(async ({ input, ctx }) => {
       const product = await Product.findById(input.productId);
       if (!product) throw new Error("Product not found");
       const newStock = product.stockQuantity + input.quantityChange;
       if (newStock < 0) throw new Error("Stock cannot go below zero");
       await Product.findByIdAndUpdate(input.productId, { stockQuantity: newStock });
+      console.log(`[Inventory] ${ctx.user.name} adjusted ${product.name} by ${input.quantityChange} (${input.reason}). New: ${newStock}`);
       return { success: true, newStock };
     }),
-    lowStock: managerProcedure.input(z2.object({ threshold: z2.number().default(10) })).query(async ({ input }) => Product.find({ stockQuantity: { $lte: input.threshold }, isActive: true }).lean())
+    lowStock: inventoryProcedure.input(z2.object({ threshold: z2.number().min(0).default(10) })).query(
+      async ({ input }) => Product.find({ stockQuantity: { $lte: input.threshold }, isActive: true }).populate("categoryId", "name").lean()
+    ),
+    recentActivity: inventoryProcedure.input(paginationInput).query(
+      async ({ input }) => Product.find({ isActive: true }).sort({ updatedAt: -1 }).skip(input.offset).limit(input.limit).select("name stockQuantity soldQuantity updatedAt").lean()
+    )
   }),
-  // DEVELOPER
+  // ── STOCK MANAGER ─────────────────────────────────────────────────────────────
+  stockManager: router({
+    summary: stockManagerProcedure.query(async () => {
+      const [totalProducts, lowStockProducts, outOfStockProducts] = await Promise.all([
+        Product.countDocuments({ isActive: true }),
+        Product.countDocuments({ isActive: true, stockQuantity: { $gt: 0, $lte: 10 } }),
+        Product.countDocuments({ isActive: true, stockQuantity: 0 })
+      ]);
+      return { totalProducts, lowStockProducts, outOfStockProducts };
+    }),
+    products: stockManagerProcedure.input(paginationInput).query(
+      async ({ input }) => Product.find({ isActive: true }).select("name stockQuantity soldQuantity categoryId images isFeatured").populate("categoryId", "name").skip(input.offset).limit(input.limit).lean()
+    ),
+    lowStockAlerts: stockManagerProcedure.input(z2.object({ threshold: z2.number().default(10) })).query(
+      async ({ input }) => Product.find({ stockQuantity: { $lte: input.threshold }, isActive: true }).populate("categoryId", "name").sort({ stockQuantity: 1 }).lean()
+    ),
+    adjustStock: stockManagerProcedure.input(z2.object({
+      productId: z2.string(),
+      quantityChange: z2.number(),
+      reason: z2.enum(["restock", "sale_adjustment", "damage", "return", "correction", "other"]),
+      notes: z2.string().optional()
+    })).mutation(async ({ input, ctx }) => {
+      const product = await Product.findById(input.productId);
+      if (!product) throw new Error("Product not found");
+      const newStock = product.stockQuantity + input.quantityChange;
+      if (newStock < 0) throw new Error("Stock cannot go below zero");
+      await Product.findByIdAndUpdate(input.productId, { stockQuantity: newStock });
+      console.log(`[StockMgr] ${ctx.user.name} -> ${product.name}: ${input.quantityChange > 0 ? "+" : ""}${input.quantityChange} (${input.reason}). New: ${newStock}`);
+      return { success: true, newStock };
+    }),
+    requestRestock: stockManagerProcedure.input(z2.object({
+      productId: z2.string(),
+      requestedQty: z2.number().min(1),
+      urgency: z2.enum(["low", "medium", "high"]).default("medium"),
+      notes: z2.string().optional()
+    })).mutation(async ({ input, ctx }) => {
+      const product = await Product.findById(input.productId);
+      if (!product) throw new Error("Product not found");
+      console.log(`[RestockRequest] ${ctx.user.name} requested ${input.requestedQty}x "${product.name}" (${input.urgency})`);
+      return { success: true, message: `Restock request submitted for ${product.name}` };
+    })
+  }),
+  // ── DEVELOPER ────────────────────────────────────────────────────────────────
   developer: router({
     platformStats: developerProcedure.query(() => getPlatformStats()),
-    salesStats: developerProcedure.query(() => getTotalSalesStats())
+    salesStats: developerProcedure.query(() => getTotalSalesStats()),
+    stores: router({
+      list: developerProcedure.query(async () => {
+        const admins = await User.find({ role: "admin" }).select("name email isActive createdAt").lean();
+        return admins.map((a) => ({
+          id: a._id.toString(),
+          adminName: a.name,
+          adminEmail: a.email,
+          isActive: a.isActive,
+          createdDate: a.createdAt,
+          storeCode: `STORE-${a._id.toString().slice(-6).toUpperCase()}`,
+          storeName: `${a.name}'s Store`
+        }));
+      }),
+      create: developerProcedure.input(z2.object({
+        adminName: z2.string().min(2),
+        adminEmail: z2.string().email(),
+        adminPassword: z2.string().min(8),
+        phone: z2.string().optional(),
+        storeName: z2.string().min(2)
+      })).mutation(async ({ input }) => {
+        const existing = await User.findOne({ email: input.adminEmail.toLowerCase() });
+        if (existing) throw new Error("A user with this email already exists");
+        const salt = await bcrypt3.genSalt(12);
+        const passwordHash = await bcrypt3.hash(input.adminPassword, salt);
+        const admin = await User.create({ name: input.adminName, email: input.adminEmail.toLowerCase(), passwordHash, phone: input.phone, role: "admin", isActive: true });
+        return { success: true, adminId: admin._id.toString(), storeCode: `STORE-${admin._id.toString().slice(-6).toUpperCase()}` };
+      }),
+      toggle: developerProcedure.input(z2.object({ adminId: z2.string(), isActive: z2.boolean() })).mutation(async ({ input }) => {
+        await User.findByIdAndUpdate(input.adminId, { isActive: input.isActive });
+        return { success: true };
+      })
+    }),
+    branches: router({
+      list: developerProcedure.query(async () => {
+        const managers = await User.find({ role: "manager" }).select("name email isActive createdAt city state").lean();
+        return managers.map((m) => ({
+          id: m._id.toString(),
+          managerName: m.name,
+          email: m.email,
+          city: m.city ?? "\u2014",
+          state: m.state ?? "\u2014",
+          isActive: m.isActive,
+          createdDate: m.createdAt,
+          branchCode: `BR-${m._id.toString().slice(-6).toUpperCase()}`
+        }));
+      }),
+      create: developerProcedure.input(z2.object({
+        managerName: z2.string().min(2),
+        managerEmail: z2.string().email(),
+        managerPassword: z2.string().min(8),
+        phone: z2.string().optional(),
+        city: z2.string().optional(),
+        state: z2.string().optional()
+      })).mutation(async ({ input }) => {
+        const existing = await User.findOne({ email: input.managerEmail.toLowerCase() });
+        if (existing) throw new Error("A user with this email already exists");
+        const salt = await bcrypt3.genSalt(12);
+        const passwordHash = await bcrypt3.hash(input.managerPassword, salt);
+        const manager = await User.create({ name: input.managerName, email: input.managerEmail.toLowerCase(), passwordHash, phone: input.phone, city: input.city, state: input.state, role: "manager", isActive: true });
+        return { success: true, managerId: manager._id.toString(), branchCode: `BR-${manager._id.toString().slice(-6).toUpperCase()}` };
+      }),
+      toggle: developerProcedure.input(z2.object({ managerId: z2.string(), isActive: z2.boolean() })).mutation(async ({ input }) => {
+        await User.findByIdAndUpdate(input.managerId, { isActive: input.isActive });
+        return { success: true };
+      })
+    }),
+    users: router({
+      list: developerProcedure.input(z2.object({ role: z2.string().optional(), limit: z2.number().default(50), offset: z2.number().default(0) })).query(async ({ input }) => {
+        const filter = input.role ? { role: input.role } : { role: { $in: ["admin", "manager", "stock_manager", "delivery", "developer"] } };
+        return User.find(filter).select("-passwordHash").sort({ createdAt: -1 }).skip(input.offset).limit(input.limit).lean();
+      }),
+      create: developerProcedure.input(z2.object({
+        name: z2.string().min(2),
+        email: z2.string().email(),
+        password: z2.string().min(8),
+        role: z2.enum(["admin", "manager", "stock_manager", "delivery"]),
+        phone: z2.string().optional(),
+        city: z2.string().optional(),
+        state: z2.string().optional()
+      })).mutation(async ({ input }) => {
+        const existing = await User.findOne({ email: input.email.toLowerCase() });
+        if (existing) throw new Error("A user with this email already exists");
+        const salt = await bcrypt3.genSalt(12);
+        const passwordHash = await bcrypt3.hash(input.password, salt);
+        const user = await User.create({ name: input.name, email: input.email.toLowerCase(), passwordHash, phone: input.phone, city: input.city, state: input.state, role: input.role, isActive: true });
+        return { success: true, userId: user._id.toString() };
+      }),
+      toggle: developerProcedure.input(z2.object({ userId: z2.string(), isActive: z2.boolean() })).mutation(async ({ input }) => {
+        await User.findByIdAndUpdate(input.userId, { isActive: input.isActive });
+        return { success: true };
+      }),
+      updateRole: developerProcedure.input(z2.object({ userId: z2.string(), role: z2.enum(["admin", "manager", "stock_manager", "delivery", "developer"]) })).mutation(async ({ input }) => {
+        await User.findByIdAndUpdate(input.userId, { role: input.role });
+        return { success: true };
+      })
+    })
   })
 });
 
@@ -765,7 +992,7 @@ async function createContext(opts) {
 
 // server/mongodb.ts
 import mongoose8 from "mongoose";
-import bcrypt3 from "bcryptjs";
+import bcrypt4 from "bcryptjs";
 var isConnected = false;
 async function connectDB() {
   if (isConnected) return;
@@ -776,7 +1003,7 @@ async function connectDB() {
   }
   try {
     await mongoose8.connect(mongoUri, {
-      dbName: process.env.MONGODB_DB_NAME || "sahad_stores"
+      dbName: process.env.MONGODB_DB_NAME || "gimbiya_mall"
     });
     isConnected = true;
     console.log("[MongoDB] Connected successfully");
@@ -798,14 +1025,15 @@ async function seedStaffAccounts() {
   const staff = [
     { name: "Admin User", email: "admin@sahadstores.com", password: "Admin@123456", role: "admin" },
     { name: "Manager User", email: "manager@sahadstores.com", password: "Manager@123456", role: "manager" },
+    { name: "Stock Manager", email: "stock@sahadstores.com", password: "Stock@123456", role: "stock_manager" },
     { name: "Delivery Rider", email: "delivery@sahadstores.com", password: "Delivery@123456", role: "delivery" },
     { name: "Developer User", email: "developer@sahadstores.com", password: "Developer@123456", role: "developer" }
   ];
   for (const s of staff) {
     const exists = await User2.findOne({ email: s.email });
     if (!exists) {
-      const salt = await bcrypt3.genSalt(12);
-      const passwordHash = await bcrypt3.hash(s.password, salt);
+      const salt = await bcrypt4.genSalt(12);
+      const passwordHash = await bcrypt4.hash(s.password, salt);
       await User2.create({ name: s.name, email: s.email, passwordHash, role: s.role, isActive: true });
       console.log(`[Seed] Created ${s.role} \u2192 ${s.email}`);
     }
@@ -996,7 +1224,7 @@ async function startServer() {
   if (port !== preferredPort) console.log(`Port ${preferredPort} busy, using ${port}`);
   server.listen(port, () => {
     console.log(`
-\u{1F6CD}\uFE0F  Sahad Stores \u2192 http://localhost:${port}/`);
+\u{1F6CD}\uFE0F  Gimbiya Mall \u2192 http://localhost:${port}/`);
     console.log(`\u{1F4E6}  API         \u2192 http://localhost:${port}/api/trpc`);
     console.log(`
 \u{1F464}  Staff Login Credentials:`);

@@ -25,7 +25,7 @@ interface DashboardHeaderProps { title: string; subtitle?: string; role?: string
 const roleNav: Record<string, { label: string; path: string; icon: any }[]> = {
   buyer: [
     { label: "Dashboard",       path: "/buyer",    icon: LayoutDashboard },
-    { label: "Browse Products", path: "/products", icon: Package },
+    { label: "Browse Products", path: "/mall",     icon: Package },
     { label: "My Cart",         path: "/cart",     icon: ShoppingCart },
     { label: "My Orders",       path: "/orders",   icon: ClipboardList },
     { label: "Profile",         path: "/profile",  icon: User },
