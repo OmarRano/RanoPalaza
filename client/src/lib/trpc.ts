@@ -83,7 +83,7 @@ function useMockQuery<T>(data: T, delay = 400) {
     const t = setTimeout(() => setState({ data, isLoading: false, error: null }), delay);
     return () => clearTimeout(t);
   }, []);
-  return state;
+  return { ...state, refetch: () => setState((prev) => ({ ...prev })) };
 }
 
 // Simulates a mutation with optimistic toast feedback
@@ -115,13 +115,14 @@ export const trpc = {
     cart: { list: { invalidate: () => {} } },
     orders: { list: { invalidate: () => {} }, detail: { invalidate: () => {} } },
     admin: { users: { invalidate: () => {} } },
+    inventory: { list: { invalidate: () => {} }, lowStock: { invalidate: () => {} }, recentActivity: { invalidate: () => {} } },
     delivery: { myOrders: { invalidate: () => {} } },
     affiliate: { myStats: { invalidate: () => {} }, getReferralLink: { invalidate: () => {} } },
   }),
 
   // Auth
   auth: {
-    me: { useQuery: () => useMockQuery(null) },
+    me: { useQuery: (..._args: any[]) => useMockQuery(null) },
     logout: { useMutation: (opts?: any) => useMockMutation(opts?.onSuccess, opts?.onError) },
     loginBuyer: { useMutation: (opts?: any) => useMockMutation(opts?.onSuccess, opts?.onError) },
     loginStaff: { useMutation: (opts?: any) => useMockMutation(opts?.onSuccess, opts?.onError) },
@@ -130,11 +131,11 @@ export const trpc = {
 
   // Products
   products: {
-    list:     { useQuery: (_?: any) => useMockQuery(MOCK_PRODUCTS) },
-    featured: { useQuery: (_?: any) => useMockQuery(MOCK_PRODUCTS.filter(p => p.isFeatured)) },
-    detail:   { useQuery: (input?: any) => useMockQuery(MOCK_PRODUCTS.find(p => p._id === input?.id) ?? MOCK_PRODUCTS[0]) },
-    byCategory:{ useQuery: (input?: any) => useMockQuery(MOCK_PRODUCTS.filter(p => (p.categoryId as any)?.name === input?.categoryId)) },
-    search:   { useQuery: (input?: any) => useMockQuery(MOCK_PRODUCTS.filter(p => p.name.toLowerCase().includes((input?.query ?? "").toLowerCase()))) },
+    list:     { useQuery: (_?: any, ..._args: any[]) => useMockQuery(MOCK_PRODUCTS) },
+    featured: { useQuery: (_?: any, ..._args: any[]) => useMockQuery(MOCK_PRODUCTS.filter(p => p.isFeatured)) },
+    detail:   { useQuery: (input?: any, ..._args: any[]) => useMockQuery(MOCK_PRODUCTS.find(p => p._id === input?.id) ?? MOCK_PRODUCTS[0]) },
+    byCategory:{ useQuery: (input?: any, ..._args: any[]) => useMockQuery(MOCK_PRODUCTS.filter(p => (p.categoryId as any)?.name === input?.categoryId)) },
+    search:   { useQuery: (input?: any, ..._args: any[]) => useMockQuery(MOCK_PRODUCTS.filter(p => p.name.toLowerCase().includes((input?.query ?? "").toLowerCase()))) },
     create:   { useMutation: (opts?: any) => useMockMutation(opts?.onSuccess, opts?.onError) },
     update:   { useMutation: (opts?: any) => useMockMutation(opts?.onSuccess, opts?.onError) },
     delete:   { useMutation: (opts?: any) => useMockMutation(opts?.onSuccess, opts?.onError) },
@@ -142,7 +143,7 @@ export const trpc = {
 
   // Categories
   categories: {
-    list:   { useQuery: () => useMockQuery(MOCK_CATEGORIES) },
+    list:   { useQuery: (..._args: any[]) => useMockQuery(MOCK_CATEGORIES) },
     create: { useMutation: (opts?: any) => useMockMutation(opts?.onSuccess, opts?.onError) },
     update: { useMutation: (opts?: any) => useMockMutation(opts?.onSuccess, opts?.onError) },
   },
@@ -150,7 +151,7 @@ export const trpc = {
   // Cart (local reactive state)
   cart: {
     list: {
-      useQuery: () => {
+      useQuery: (..._args: any[]) => {
         const [data, setData] = useState([..._cart]);
         useEffect(() => {
           const handler = () => setData([..._cart]);
@@ -184,8 +185,8 @@ export const trpc = {
 
   // Orders
   orders: {
-    list:   { useQuery: (_?: any) => useMockQuery(MOCK_ORDERS) },
-    detail: { useQuery: (input?: any) => useMockQuery(MOCK_ORDERS.find(o => o.orderId === input?.orderId) ?? MOCK_ORDERS[0]) },
+    list:   { useQuery: (_?: any, ..._args: any[]) => useMockQuery(MOCK_ORDERS) },
+    detail: { useQuery: (input?: any, ..._args: any[]) => useMockQuery(MOCK_ORDERS.find(o => o.orderId === input?.orderId) ?? MOCK_ORDERS[0]) },
     create: { useMutation: (opts?: any) => useMockMutation((d) => { opts?.onSuccess?.({ success: true, orderId: `ORD-${Date.now()}`, ...d }); }, opts?.onError) },
     cancel: { useMutation: (opts?: any) => useMockMutation(opts?.onSuccess, opts?.onError) },
     updateStatus: { useMutation: (opts?: any) => useMockMutation(opts?.onSuccess, opts?.onError) },
@@ -193,61 +194,61 @@ export const trpc = {
 
   // Admin
   admin: {
-    stats:           { useQuery: () => useMockQuery({ totalUsers: MOCK_USERS.length, totalOrders: MOCK_ORDERS.length, totalProducts: MOCK_PRODUCTS.length, totalRevenue: 284500 }) },
-    salesStats:      { useQuery: () => useMockQuery({ totalRevenue: 284500, totalCommission: 28450, pendingOrders: 1, processingOrders: 1, deliveredOrders: 2, cancelledOrders: 0, revenueTrend: [{ month: "Jan", revenue: 32000 }, { month: "Feb", revenue: 41000 }, { month: "Mar", revenue: 38000 }, { month: "Apr", revenue: 55000 }, { month: "May", revenue: 62000 }, { month: "Jun", revenue: 56500 }] }) },
-    users:           { useQuery: (_?: any) => useMockQuery(MOCK_USERS) },
-    allOrders:       { useQuery: (_?: any) => useMockQuery(MOCK_ORDERS) },
+    stats:           { useQuery: (..._args: any[]) => useMockQuery({ totalUsers: MOCK_USERS.length, totalOrders: MOCK_ORDERS.length, totalProducts: MOCK_PRODUCTS.length, totalRevenue: 284500 }) },
+    salesStats:      { useQuery: (..._args: any[]) => useMockQuery({ totalRevenue: 284500, totalCommission: 28450, pendingOrders: 1, processingOrders: 1, deliveredOrders: 2, cancelledOrders: 0, revenueTrend: [{ month: "Jan", revenue: 32000 }, { month: "Feb", revenue: 41000 }, { month: "Mar", revenue: 38000 }, { month: "Apr", revenue: 55000 }, { month: "May", revenue: 62000 }, { month: "Jun", revenue: 56500 }] }) },
+    users:           { useQuery: (_?: any, ..._args: any[]) => useMockQuery(MOCK_USERS) },
+    allOrders:       { useQuery: (_?: any, ..._args: any[]) => useMockQuery(MOCK_ORDERS) },
     updateUserRole:  { useMutation: (opts?: any) => useMockMutation(opts?.onSuccess, opts?.onError) },
     enableAffiliate: { useMutation: (opts?: any) => useMockMutation(opts?.onSuccess, opts?.onError) },
     onboardStockManager: { useMutation: (opts?: any) => useMockMutation(opts?.onSuccess, opts?.onError) },
-    listStaff:       { useQuery: (_?: any) => useMockQuery(MOCK_USERS.filter(u => ["manager","stock_manager","delivery"].includes(u.role))) },
+    listStaff:       { useQuery: (_?: any, ..._args: any[]) => useMockQuery(MOCK_USERS.filter(u => ["manager","stock_manager","delivery"].includes(u.role))) },
     toggleUserActive:{ useMutation: (opts?: any) => useMockMutation(opts?.onSuccess, opts?.onError) },
   },
 
   // Inventory (shared: admin, manager, stock_manager, developer)
   inventory: {
-    list:           { useQuery: (_?: any) => useMockQuery(MOCK_PRODUCTS.map(p => ({ ...p, updatedAt: new Date().toISOString() }))) },
-    lowStock:       { useQuery: (_?: any) => useMockQuery(MOCK_PRODUCTS.filter(p => p.stockQuantity < 20)) },
+    list:           { useQuery: (_?: any, ..._args: any[]) => useMockQuery(MOCK_PRODUCTS.map(p => ({ ...p, updatedAt: new Date().toISOString() }))) },
+    lowStock:       { useQuery: (_?: any, ..._args: any[]) => useMockQuery(MOCK_PRODUCTS.filter(p => p.stockQuantity < 20)) },
     adjustStock:    { useMutation: (opts?: any) => useMockMutation(opts?.onSuccess, opts?.onError) },
-    recentActivity: { useQuery: (_?: any) => useMockQuery(MOCK_PRODUCTS.map(p => ({ ...p, updatedAt: new Date(Date.now() - Math.random() * 86400000 * 3).toISOString() }))) },
+    recentActivity: { useQuery: (_?: any, ..._args: any[]) => useMockQuery(MOCK_PRODUCTS.map(p => ({ ...p, updatedAt: new Date(Date.now() - Math.random() * 86400000 * 3).toISOString() }))) },
   },
 
   // Stock Manager
   stockManager: {
     summary: {
-      useQuery: (_?: any) => useMockQuery({
+      useQuery: (_?: any, ..._args: any[]) => useMockQuery({
         totalProducts:      MOCK_PRODUCTS.length,
         lowStockProducts:   MOCK_PRODUCTS.filter(p => p.stockQuantity > 0 && p.stockQuantity <= 10).length,
         outOfStockProducts: MOCK_PRODUCTS.filter(p => p.stockQuantity === 0).length,
       }),
     },
-    products:       { useQuery: (_?: any) => useMockQuery(MOCK_PRODUCTS) },
-    lowStockAlerts: { useQuery: (_?: any) => useMockQuery(MOCK_PRODUCTS.filter(p => p.stockQuantity <= 10)) },
+    products:       { useQuery: (_?: any, ..._args: any[]) => useMockQuery(MOCK_PRODUCTS) },
+    lowStockAlerts: { useQuery: (_?: any, ..._args: any[]) => useMockQuery(MOCK_PRODUCTS.filter(p => p.stockQuantity <= 10)) },
     adjustStock:    { useMutation: (opts?: any) => useMockMutation(opts?.onSuccess, opts?.onError) },
     requestRestock: { useMutation: (opts?: any) => useMockMutation(opts?.onSuccess, opts?.onError) },
   },
 
   // Delivery
   delivery: {
-    myOrders:     { useQuery: (_?: any) => useMockQuery(MOCK_ORDERS.filter(o => ["assigned","in_transit","delivered"].includes(o.status))) },
+    myOrders:     { useQuery: (_?: any, ..._args: any[]) => useMockQuery(MOCK_ORDERS.filter(o => ["assigned","in_transit","delivered"].includes(o.status))) },
     updateStatus: { useMutation: (opts?: any) => useMockMutation(opts?.onSuccess, opts?.onError) },
     assignOrder:  { useMutation: (opts?: any) => useMockMutation(opts?.onSuccess, opts?.onError) },
   },
 
   // Affiliate
   affiliate: {
-    myStats:         { useQuery: () => useMockQuery({ totalReferrals: MOCK_REFERRALS.length, totalEarnings: 856.50, pendingEarnings: 169.50, paidEarnings: 687.00 }) },
-    getReferralLink: { useQuery: () => useMockQuery({ code: "REF-NGZ001", url: "http://localhost:3000/products?ref=REF-NGZ001" }) },
-    myReferrals:     { useQuery: () => useMockQuery(MOCK_REFERRALS) },
+    myStats:         { useQuery: (..._args: any[]) => useMockQuery({ totalReferrals: MOCK_REFERRALS.length, totalEarnings: 856.50, pendingEarnings: 169.50, paidEarnings: 687.00 }) },
+    getReferralLink: { useQuery: (..._args: any[]) => useMockQuery({ code: "REF-NGZ001", url: "http://localhost:3000/products?ref=REF-NGZ001" }) },
+    myReferrals:     { useQuery: (..._args: any[]) => useMockQuery(MOCK_REFERRALS) },
   },
 
   // Developer (stores, branches, users — rich mock data)
   developer: {
-    platformStats: { useQuery: () => useMockQuery({ totalUsers: MOCK_USERS.length, totalOrders: MOCK_ORDERS.length, totalProducts: MOCK_PRODUCTS.length, deliveredOrders: 2, totalRevenue: 284500 }) },
-    salesStats:    { useQuery: () => useMockQuery({ totalRevenue: 284500, totalCommission: 28450, deliveredOrders: 2, revenueTrend: [{ month: "Jan", revenue: 32000 }, { month: "Feb", revenue: 41000 }, { month: "Mar", revenue: 38000 }, { month: "Apr", revenue: 55000 }, { month: "May", revenue: 62000 }, { month: "Jun", revenue: 56500 }] }) },
+    platformStats: { useQuery: (..._args: any[]) => useMockQuery({ totalUsers: MOCK_USERS.length, totalOrders: MOCK_ORDERS.length, totalProducts: MOCK_PRODUCTS.length, deliveredOrders: 2, totalRevenue: 284500 }) },
+    salesStats:    { useQuery: (..._args: any[]) => useMockQuery({ totalRevenue: 284500, totalCommission: 28450, deliveredOrders: 2, revenueTrend: [{ month: "Jan", revenue: 32000 }, { month: "Feb", revenue: 41000 }, { month: "Mar", revenue: 38000 }, { month: "Apr", revenue: 55000 }, { month: "May", revenue: 62000 }, { month: "Jun", revenue: 56500 }] }) },
 
     stores: {
-      list: { useQuery: (_?: any) => useMockQuery([
+      list: { useQuery: (_?: any, ..._args: any[]) => useMockQuery([
         { id: "1", storeCode: "STORE-A1B2C3", storeName: "Ahmed Hassan's Store",  adminName: "Ahmed Hassan",  adminEmail: "ahmed@sahadstores.com",  isActive: true,  createdDate: "2026-01-15T00:00:00.000Z" },
         { id: "2", storeCode: "STORE-D4E5F6", storeName: "Chioma Okafor's Store", adminName: "Chioma Okafor", adminEmail: "chioma@sahadstores.com", isActive: true,  createdDate: "2026-02-01T00:00:00.000Z" },
         { id: "3", storeCode: "STORE-G7H8I9", storeName: "Emeka Nwosu's Store",   adminName: "Emeka Nwosu",   adminEmail: "emeka@sahadstores.com",  isActive: false, createdDate: "2026-02-20T00:00:00.000Z" },
@@ -257,7 +258,7 @@ export const trpc = {
     },
 
     branches: {
-      list: { useQuery: (_?: any) => useMockQuery([
+      list: { useQuery: (_?: any, ..._args: any[]) => useMockQuery([
         { id: "1", branchCode: "BR-L1K3J5", managerName: "Fatima Bello",   email: "fatima@sahadstores.com",  city: "Lagos",         state: "Lagos",  isActive: true,  createdDate: "2026-02-05T00:00:00.000Z" },
         { id: "2", branchCode: "BR-A7B9C1", managerName: "Tunde Ola",      email: "tunde@sahadstores.com",   city: "Abuja",         state: "FCT",    isActive: true,  createdDate: "2026-02-10T00:00:00.000Z" },
         { id: "3", branchCode: "BR-K2A4N6", managerName: "Ngozi Adeyemi",  email: "ngozi@sahadstores.com",   city: "Kano",          state: "Kano",   isActive: true,  createdDate: "2026-03-01T00:00:00.000Z" },
@@ -268,7 +269,7 @@ export const trpc = {
     },
 
     users: {
-      list: { useQuery: (_?: any) => useMockQuery([
+      list: { useQuery: (_?: any, ..._args: any[]) => useMockQuery([
         { _id: "s1", name: "Ahmed Hassan",  email: "ahmed@sahadstores.com",  role: "admin",         isActive: true,  createdAt: "2026-01-15T00:00:00.000Z", city: "Abuja",         state: "FCT"    },
         { _id: "s2", name: "Chioma Okafor", email: "chioma@sahadstores.com", role: "admin",         isActive: true,  createdAt: "2026-02-01T00:00:00.000Z", city: "Lagos",         state: "Lagos"  },
         { _id: "s3", name: "Fatima Bello",  email: "fatima@sahadstores.com", role: "manager",       isActive: true,  createdAt: "2026-02-05T00:00:00.000Z", city: "Lagos",         state: "Lagos"  },

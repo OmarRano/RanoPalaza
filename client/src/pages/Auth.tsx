@@ -65,16 +65,16 @@ export default function Auth() {
   const [showStaffPw, setShowStaffPw] = useState(false);
 
   const loginBuyer = trpc.auth.loginBuyer.useMutation({
-    onSuccess: (d) => { toast.success("Welcome back!"); setTimeout(() => navigate(getRoleRedirect(d.role)), 400); },
-    onError: (e) => toast.error(e.message || "Login failed"),
+    onSuccess: (d: any) => { toast.success("Welcome back!"); setTimeout(() => navigate(getRoleRedirect(d.role)), 400); },
+    onError: (e: any) => toast.error(e.message || "Login failed"),
   });
   const signupBuyer = trpc.auth.signupBuyer.useMutation({
     onSuccess: () => { toast.success("Account created! Welcome to Gimbiya Mall."); setTimeout(() => navigate("/products"), 600); },
-    onError: (e) => toast.error(e.message || "Signup failed"),
+    onError: (e: any) => toast.error(e.message || "Signup failed"),
   });
   const loginStaff = trpc.auth.loginStaff.useMutation({
-    onSuccess: (d) => { toast.success(`Signed in as ${d.role}`); setTimeout(() => navigate(getRoleRedirect(d.role)), 400); },
-    onError: (e) => toast.error(e.message || "Login failed"),
+    onSuccess: (d: any) => { toast.success(`Signed in as ${d.role}`); setTimeout(() => navigate(getRoleRedirect(d.role)), 400); },
+    onError: (e: any) => toast.error(e.message || "Login failed"),
   });
 
   const handleLogin = (e: React.FormEvent) => {

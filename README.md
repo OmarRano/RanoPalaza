@@ -20,7 +20,7 @@ Gimbiya Mall gives Nigerian merchants the same operating system Jumia uses — b
 git clone https://github.com/your-org/RanoPalaza-Gimbiya-Mall.git
 cd RanoPalaza-Gimbiya-Mall
 pnpm install
-pnpm dev:ui
+pnpm run dev:ui
 ```
 Open **http://localhost:5173** — use the floating Demo Navigator to explore all 9 role dashboards.
 
@@ -28,7 +28,7 @@ Open **http://localhost:5173** — use the floating Demo Navigator to explore al
 ```bash
 cp .env.example .env     # fill in MONGODB_URI and JWT_SECRET
 pnpm install
-pnpm dev
+pnpm run dev
 ```
 
 ---
@@ -141,7 +141,7 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for the full workflow, common bug patte
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/your-org/RanoPalaza-Gimbiya-Mall)
 
 > The devcontainer installs pnpm, all extensions, and runs `pnpm install` automatically.  
-> Just open the Codespace and run `pnpm dev:ui`.
+> Just open the Codespace and run `pnpm run dev:ui`.
 
 ---
 

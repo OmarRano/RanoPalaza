@@ -27,12 +27,12 @@ export default function ProductCatalog() {
     onSuccess: () => {
       toast.success("Product added to cart!");
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast.error(error.message || "Failed to add to cart");
     },
   });
 
-  const handleAddToCart = (productId: number) => {
+  const handleAddToCart = (productId: string | number) => {
     if (!user) {
       navigate("/");
       return;
