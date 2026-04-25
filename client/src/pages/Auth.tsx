@@ -3,6 +3,8 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { useLocation, useSearch } from "wouter";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
+
+const USE_BACKEND_AUTH = import.meta.env.VITE_USE_BACKEND_AUTH === "true";
 import {
   ShoppingBag, Mail, Lock, User, Phone,
   Eye, EyeOff, CheckCircle2, Shield, Truck,
@@ -64,39 +66,95 @@ export default function Auth() {
   const [staffPw, setStaffPw] = useState("");
   const [showStaffPw, setShowStaffPw] = useState(false);
 
-  const loginBuyer = trpc.auth.loginBuyer.useMutation({
-    onSuccess: (d) => { toast.success("Welcome back!"); setTimeout(() => navigate(getRoleRedirect(d.role)), 400); },
-    onError: (e) => toast.error(e.message || "Login failed"),
+  const [pendingType, setPendingType] = useState<"buyerLogin" | "buyerSignup" | "staffLogin" | null>(null);
+
+  const loginBuyerMutation = trpc.auth.loginBuyer.useMutation({
+    onSuccess: (d: any) => { toast.success("Welcome back!"); setTimeout(() => navigate(getRoleRedirect(d.role)), 400); },
+    onError: (e: any) => toast.error(e.message || "Login failed"),
   });
-  const signupBuyer = trpc.auth.signupBuyer.useMutation({
+  const signupBuyerMutation = trpc.auth.signupBuyer.useMutation({
     onSuccess: () => { toast.success("Account created! Welcome to Gimbiya Mall."); setTimeout(() => navigate("/products"), 600); },
-    onError: (e) => toast.error(e.message || "Signup failed"),
+    onError: (e: any) => toast.error(e.message || "Signup failed"),
   });
-  const loginStaff = trpc.auth.loginStaff.useMutation({
-    onSuccess: (d) => { toast.success(`Signed in as ${d.role}`); setTimeout(() => navigate(getRoleRedirect(d.role)), 400); },
-    onError: (e) => toast.error(e.message || "Login failed"),
+  const loginStaffMutation = trpc.auth.loginStaff.useMutation({
+    onSuccess: (d: any) => { toast.success(`Signed in as ${d.role}`); setTimeout(() => navigate(getRoleRedirect(d.role)), 400); },
+    onError: (e: any) => toast.error(e.message || "Login failed"),
   });
 
-  const handleLogin = (e: React.FormEvent) => {
+  const postAuth = async (path: string, payload: Record<string, any>) => {
+    const response = await fetch(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(payload),
+    });
+    const data = await response.json();
+    if (!response.ok || data?.success === false) throw new Error(data?.message || "Request failed");
+    return data;
+  };
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!loginEmail || !loginPw) return toast.error("Please fill all fields");
-    loginBuyer.mutate({ email: loginEmail, password: loginPw });
+
+    if (!USE_BACKEND_AUTH) return loginBuyerMutation.mutate({ email: loginEmail, password: loginPw });
+
+    try {
+      setPendingType("buyerLogin");
+      const data = await postAuth("/api/auth/login-buyer", { email: loginEmail, password: loginPw });
+      toast.success("Welcome back!");
+      setTimeout(() => navigate(getRoleRedirect(data.role)), 400);
+    } catch (error: any) {
+      toast.error(error?.message || "Login failed");
+    } finally {
+      setPendingType(null);
+    }
   };
-  const handleSignup = (e: React.FormEvent) => {
+
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!signupName || !signupEmail || !signupPw || !signupConfirm) return toast.error("Fill all required fields");
     if (signupPw !== signupConfirm) return toast.error("Passwords don't match");
-    signupBuyer.mutate({ name: signupName, email: signupEmail, phone: signupPhone || undefined, password: signupPw, confirmPassword: signupConfirm });
+
+    if (!USE_BACKEND_AUTH) {
+      return signupBuyerMutation.mutate({ name: signupName, email: signupEmail, phone: signupPhone || undefined, password: signupPw, confirmPassword: signupConfirm });
+    }
+
+    try {
+      setPendingType("buyerSignup");
+      await postAuth("/api/auth/signup-buyer", { name: signupName, email: signupEmail, phone: signupPhone || undefined, password: signupPw, confirmPassword: signupConfirm });
+      toast.success("Account created! Welcome to Gimbiya Mall.");
+      setTimeout(() => navigate("/products"), 600);
+    } catch (error: any) {
+      toast.error(error?.message || "Signup failed");
+    } finally {
+      setPendingType(null);
+    }
   };
-  const handleStaffLogin = (e: React.FormEvent) => {
+
+  const handleStaffLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!staffEmail || !staffPw) return toast.error("Enter email and password");
-    loginStaff.mutate({ email: staffEmail, password: staffPw });
+
+    if (!USE_BACKEND_AUTH) return loginStaffMutation.mutate({ email: staffEmail, password: staffPw });
+
+    try {
+      setPendingType("staffLogin");
+      const data = await postAuth("/api/auth/login-staff", { email: staffEmail, password: staffPw });
+      toast.success(`Signed in as ${data.role}`);
+      setTimeout(() => navigate(getRoleRedirect(data.role)), 400);
+    } catch (error: any) {
+      toast.error(error?.message || "Login failed");
+    } finally {
+      setPendingType(null);
+    }
   };
 
   const pwMatch = signupConfirm && signupConfirm === signupPw;
   const pwMismatch = signupConfirm && signupConfirm !== signupPw;
-  const isPending = loginBuyer.isPending || signupBuyer.isPending || loginStaff.isPending;
+  const isPending = USE_BACKEND_AUTH
+    ? pendingType !== null
+    : loginBuyerMutation.isPending || signupBuyerMutation.isPending || loginStaffMutation.isPending;
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: "linear-gradient(160deg,#0b1628 0%,#132040 100%)", fontFamily: "'Outfit', sans-serif" }}>
@@ -184,7 +242,7 @@ export default function Auth() {
                   opacity: isPending ? 0.7 : 1, marginTop: 4, fontFamily: "inherit",
                   boxShadow: "0 4px 20px rgba(232,160,32,0.35)", transition: "all 0.2s",
                 }}>
-                  {loginBuyer.isPending ? "Signing in…" : "Sign In"}
+                  {(USE_BACKEND_AUTH ? pendingType === "buyerLogin" : loginBuyerMutation.isPending) ? "Signing in…" : "Sign In"}
                 </button>
               </form>
               <p style={{ textAlign: "center", marginTop: 24, color: "rgba(255,255,255,0.3)", fontSize: 13 }}>
@@ -268,7 +326,7 @@ export default function Auth() {
                   opacity: (isPending || !!pwMismatch) ? 0.65 : 1, marginTop: 4, fontFamily: "inherit",
                   boxShadow: "0 4px 20px rgba(232,160,32,0.35)", transition: "all 0.2s",
                 }}>
-                  {signupBuyer.isPending ? "Creating account…" : "Create Account"}
+                  {(USE_BACKEND_AUTH ? pendingType === "buyerSignup" : signupBuyerMutation.isPending) ? "Creating account…" : "Create Account"}
                 </button>
               </form>
               <p style={{ textAlign: "center", marginTop: 20, color: "rgba(255,255,255,0.3)", fontSize: 13 }}>
@@ -313,13 +371,13 @@ export default function Auth() {
                         </button>
                       </div>
                     </div>
-                    <button type="submit" disabled={loginStaff.isPending} style={{
+                    <button type="submit" disabled={USE_BACKEND_AUTH ? pendingType === "staffLogin" : loginStaffMutation.isPending} style={{
                       width: "100%", padding: "12px", borderRadius: 10, fontSize: 14, fontWeight: 700,
                       background: "rgba(255,255,255,0.08)", color: "#fff", border: "1px solid rgba(255,255,255,0.12)",
-                      cursor: loginStaff.isPending ? "not-allowed" : "pointer", opacity: loginStaff.isPending ? 0.7 : 1,
+                      cursor: (USE_BACKEND_AUTH ? pendingType === "staffLogin" : loginStaffMutation.isPending) ? "not-allowed" : "pointer", opacity: (USE_BACKEND_AUTH ? pendingType === "staffLogin" : loginStaffMutation.isPending) ? 0.7 : 1,
                       fontFamily: "inherit", transition: "all 0.2s",
                     }}>
-                      {loginStaff.isPending ? "Signing in…" : "Sign In as Staff"}
+                      {(USE_BACKEND_AUTH ? pendingType === "staffLogin" : loginStaffMutation.isPending) ? "Signing in…" : "Sign In as Staff"}
                     </button>
                   </form>
                 </div>
@@ -334,14 +392,26 @@ export default function Auth() {
                       const Icon = c.icon;
                       return (
                         <button key={c.role}
-                          onClick={() => loginStaff.mutate({ email: c.email, password: c.password })}
-                          disabled={loginStaff.isPending}
+                          onClick={async () => {
+                            if (!USE_BACKEND_AUTH) return loginStaffMutation.mutate({ email: c.email, password: c.password });
+                            try {
+                              setPendingType("staffLogin");
+                              const data = await postAuth("/api/auth/login-staff", { email: c.email, password: c.password });
+                              toast.success(`Signed in as ${data.role}`);
+                              setTimeout(() => navigate(getRoleRedirect(data.role)), 400);
+                            } catch (error: any) {
+                              toast.error(error?.message || "Login failed");
+                            } finally {
+                              setPendingType(null);
+                            }
+                          }}
+                          disabled={USE_BACKEND_AUTH ? pendingType === "staffLogin" : loginStaffMutation.isPending}
                           style={{
                             padding: 18, borderRadius: 14, border: `1.5px solid ${c.border}`,
-                            background: c.bg, textAlign: "left", cursor: loginStaff.isPending ? "not-allowed" : "pointer",
-                            transition: "all 0.2s", opacity: loginStaff.isPending ? 0.6 : 1, fontFamily: "inherit",
+                            background: c.bg, textAlign: "left", cursor: (USE_BACKEND_AUTH ? pendingType === "staffLogin" : loginStaffMutation.isPending) ? "not-allowed" : "pointer",
+                            transition: "all 0.2s", opacity: (USE_BACKEND_AUTH ? pendingType === "staffLogin" : loginStaffMutation.isPending) ? 0.6 : 1, fontFamily: "inherit",
                           }}
-                          onMouseOver={e => { if (!loginStaff.isPending) { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = `0 8px 24px ${c.accent}20`; } }}
+                          onMouseOver={e => { if (!(USE_BACKEND_AUTH ? pendingType === "staffLogin" : loginStaffMutation.isPending)) { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = `0 8px 24px ${c.accent}20`; } }}
                           onMouseOut={e => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = "none"; }}>
                           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
                             <span style={{ background: `${c.accent}22`, color: c.accent, fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 99 }}>{c.role}</span>

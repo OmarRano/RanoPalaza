@@ -20,7 +20,7 @@ Gimbiya Mall gives Nigerian merchants the same operating system Jumia uses — b
 git clone https://github.com/your-org/RanoPalaza-Gimbiya-Mall.git
 cd RanoPalaza-Gimbiya-Mall
 pnpm install
-pnpm dev:ui
+pnpm run dev:ui
 ```
 Open **http://localhost:5173** — use the floating Demo Navigator to explore all 9 role dashboards.
 
@@ -28,8 +28,79 @@ Open **http://localhost:5173** — use the floating Demo Navigator to explore al
 ```bash
 cp .env.example .env     # fill in MONGODB_URI and JWT_SECRET
 pnpm install
-pnpm dev
+pnpm run dev
 ```
+
+
+### Enable real backend login/signup (MongoDB Atlas)
+
+To make the frontend auth form call the backend (instead of demo mock mode), set:
+
+```bash
+# server
+MONGODB_URI=mongodb+srv://<user>:<urlencoded-password>@<cluster>/<db>?retryWrites=true&w=majority
+JWT_SECRET=replace-with-32-plus-char-secret
+
+# client (Vite env)
+VITE_USE_BACKEND_AUTH=true
+```
+
+Then restart:
+
+```bash
+pnpm run dev
+```
+
+
+Generate a secure JWT secret (32 bytes hex):
+
+```bash
+pnpm run jwt:secret
+# or
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+Then copy the output into your `.env` file:
+
+```bash
+JWT_SECRET=<paste-generated-secret-here>
+```
+
+If your Atlas password has spaces or special characters, URL-encode it first (for example space => `%20`).
+
+Backend endpoints used by the form:
+- `POST /api/auth/signup-buyer`
+- `POST /api/auth/login-buyer`
+- `POST /api/auth/login-staff`
+- `GET /api/auth/me`
+- `POST /api/auth/logout`
+
+
+---
+
+
+## Troubleshooting: `Cannot find module './tailwindcss-oxide.linux-x64-gnu.node'`
+
+If `pnpm run dev` fails with a Tailwind oxide native module error, use this recovery flow:
+
+```bash
+# 1) Use an LTS Node runtime (recommended)
+nvm install 22
+nvm use 22
+
+# 2) Ensure optional dependencies are enabled
+pnpm config set optional true
+
+# 3) Clean and reinstall dependencies
+rm -rf node_modules
+pnpm install --force
+
+# 4) Start again
+pnpm run dev
+```
+
+Why this works: Tailwind v4 uses a platform-specific native binary (`@tailwindcss/oxide`).
+If optional deps were skipped, cache was corrupted, or Node ABI is unsupported, reinstalling on Node LTS restores the binary.
 
 ---
 
@@ -141,7 +212,7 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for the full workflow, common bug patte
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/your-org/RanoPalaza-Gimbiya-Mall)
 
 > The devcontainer installs pnpm, all extensions, and runs `pnpm install` automatically.  
-> Just open the Codespace and run `pnpm dev:ui`.
+> Just open the Codespace and run `pnpm run dev:ui`.
 
 ---
 

@@ -20,7 +20,7 @@ import {
 import { toast } from "sonner";
 import { useState } from "react";
 
-interface DashboardHeaderProps { title: string; subtitle?: string; }
+interface DashboardHeaderProps { title: string; subtitle?: string; role?: string; }
 
 const roleNav: Record<string, { label: string; path: string; icon: any }[]> = {
   buyer: [

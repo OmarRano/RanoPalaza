@@ -24,10 +24,16 @@ let isConnected = false;
 export async function connectDB(): Promise<void> {
   if (isConnected) return;
 
-  const mongoUri = process.env.MONGODB_URI;
+  const rawMongoUri = process.env.MONGODB_URI?.trim();
+  const mongoUri = rawMongoUri?.replace(/\s+/g, "") ?? "";
+
   if (!mongoUri) {
     console.warn("[MongoDB] MONGODB_URI not set — database features disabled");
     return;
+  }
+
+  if (rawMongoUri && rawMongoUri !== mongoUri) {
+    console.warn("[MongoDB] MONGODB_URI contained whitespace. It was normalized before connect.");
   }
 
   try {

@@ -7,6 +7,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { connectDB } from "../mongodb";
 import { authRateLimiter, apiRateLimiter } from "./rateLimit";
+import { authRoutes } from "../authRoutes";
 import { serveStatic, setupVite } from "./vite";
 
 function isPortAvailable(port: number): Promise<boolean> {
@@ -36,15 +37,19 @@ async function startServer() {
 
   // 2. Rate limiting: stricter on auth, general on all API
   app.use("/api/trpc/auth", authRateLimiter);
+  app.use("/api/auth", authRateLimiter);
   app.use("/api/trpc", apiRateLimiter);
 
-  // 3. tRPC router — all API handled here, no separate OAuth routes
+  // 3. REST auth bridge for frontend forms
+  app.use("/api/auth", authRoutes);
+
+  // 4. tRPC router — all API handled here, no separate OAuth routes
   app.use(
     "/api/trpc",
     createExpressMiddleware({ router: appRouter, createContext })
   );
 
-  // 4. Frontend (Vite dev or static build)
+  // 5. Frontend (Vite dev or static build)
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);
   } else {
