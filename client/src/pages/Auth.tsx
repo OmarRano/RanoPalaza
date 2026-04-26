@@ -16,7 +16,7 @@ function getRoleRedirect(role: string): string {
     admin: "/admin", manager: "/manager", delivery: "/delivery",
     reader: "/affiliate", developer: "/developer",
   };
-  return map[role] ?? "/products";
+  return map[role] ?? "/mall";
 }
 
 const STAFF_CARDS = [
@@ -34,7 +34,7 @@ const inp: React.CSSProperties = {
 const lbl: React.CSSProperties = { color: "rgba(255,255,255,0.55)", fontSize: 13, fontWeight: 500, display: "block", marginBottom: 6 };
 
 export default function Auth() {
-  const { user, loading } = useAuth();
+  const { user, loading, setUser } = useAuth();
   const [, navigate] = useLocation();
   const search = useSearch();
   const urlMode = new URLSearchParams(search).get("mode");
@@ -65,15 +65,27 @@ export default function Auth() {
   const [showStaffPw, setShowStaffPw] = useState(false);
 
   const loginBuyer = trpc.auth.loginBuyer.useMutation({
-    onSuccess: (d: any) => { toast.success("Welcome back!"); setTimeout(() => navigate(getRoleRedirect(d.role)), 400); },
+    onSuccess: (d: any) => {
+      toast.success("Welcome back!");
+      if (setUser) setUser(d);
+      setTimeout(() => navigate(getRoleRedirect(d.role)), 400);
+    },
     onError: (e: any) => toast.error(e.message || "Login failed"),
   });
   const signupBuyer = trpc.auth.signupBuyer.useMutation({
-    onSuccess: () => { toast.success("Account created! Welcome to Gimbiya Mall."); setTimeout(() => navigate("/products"), 600); },
+    onSuccess: (d: any) => {
+      toast.success("Account created! Welcome to Gimbiya Mall.");
+      if (setUser) setUser(d);
+      setTimeout(() => navigate("/mall"), 600);
+    },
     onError: (e: any) => toast.error(e.message || "Signup failed"),
   });
   const loginStaff = trpc.auth.loginStaff.useMutation({
-    onSuccess: (d: any) => { toast.success(`Signed in as ${d.role}`); setTimeout(() => navigate(getRoleRedirect(d.role)), 400); },
+    onSuccess: (d: any) => {
+      toast.success(`Signed in as ${d.role}`);
+      if (setUser) setUser(d);
+      setTimeout(() => navigate(getRoleRedirect(d.role)), 400);
+    },
     onError: (e: any) => toast.error(e.message || "Login failed"),
   });
 

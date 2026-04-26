@@ -32,7 +32,7 @@ export default function OrderHistory() {
             </div>
             <h2 className="text-xl font-bold text-slate-800 mb-2">No orders yet</h2>
             <p className="text-slate-500 mb-6">Start shopping to see your orders here.</p>
-            <Button onClick={() => navigate("/products")}>Browse Products</Button>
+            <Button onClick={() => navigate("/mall")}>Browse Products</Button>
           </div>
         ) : (
           <div className="space-y-4">

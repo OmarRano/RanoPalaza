@@ -124,7 +124,7 @@ export default function Home() {
   const [, navigate] = useLocation();
 
   useEffect(() => {
-    if (!loading && user) navigate(dashboardPath[(user as any).role] ?? "/products");
+    if (!loading && user) navigate(dashboardPath[(user as any).role] ?? "/mall");
   }, [user, loading, navigate]);
 
   return (
@@ -147,7 +147,7 @@ export default function Home() {
 
             {/* Nav links — desktop */}
             <div className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-600">
-              <button onClick={() => navigate("/products")} className="hover:text-blue-600 transition-colors">Products</button>
+              <button onClick={() => navigate("/mall")} className="hover:text-blue-600 transition-colors">Products</button>
               <a href="#features" className="hover:text-blue-600 transition-colors">Features</a>
               <a href="#roles" className="hover:text-blue-600 transition-colors">Roles</a>
             </div>
@@ -226,7 +226,7 @@ export default function Home() {
                 Get Started Free <ArrowRight className="w-5 h-5" />
               </button>
               <button
-                onClick={() => navigate("/products")}
+                onClick={() => navigate("/mall")}
                 className="inline-flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 text-white font-semibold px-8 py-4 rounded-xl transition-all border border-white/20 text-base"
               >
                 <Package className="w-5 h-5" /> Browse Products
@@ -520,7 +520,7 @@ export default function Home() {
 
             {/* Links */}
             <div className="flex items-center gap-6 text-sm">
-              <button onClick={() => navigate("/products")} className="hover:text-white transition-colors">Products</button>
+              <button onClick={() => navigate("/mall")} className="hover:text-white transition-colors">Products</button>
               <button onClick={() => navigate("/auth")}     className="hover:text-white transition-colors">Sign In</button>
               <button onClick={() => navigate("/auth?mode=signup")} className="hover:text-white transition-colors">Sign Up</button>
               <button onClick={() => navigate("/auth?mode=staff")} className="hover:text-white transition-colors">Staff Portal</button>

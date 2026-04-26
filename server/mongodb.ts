@@ -18,6 +18,7 @@
 
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
+import { seedVirtualMall } from "./seedVirtualMall";
 
 let isConnected = false;
 
@@ -47,6 +48,7 @@ export async function connectDB(): Promise<void> {
     });
 
     await seedStaffAccounts();
+    await seedVirtualMall();
   } catch (error) {
     console.error("[MongoDB] Failed to connect:", error);
   }

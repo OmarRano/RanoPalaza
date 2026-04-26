@@ -33,6 +33,28 @@ pnpm run dev
 
 ---
 
+## Node + pnpm troubleshooting
+If you see errors like `Cannot find module './tailwindcss-oxide.linux-x64-gnu.node'`, the issue is usually a Node version mismatch or disabled optional dependencies.
+
+Run these exact commands:
+```bash
+nvm install 22
+nvm use 22
+pnpm config set optional true
+rm -rf node_modules
+pnpm install --force
+pnpm run dev
+```
+
+If the error persists, send the output of:
+```bash
+node -v
+pnpm -v
+pnpm config get optional
+```
+
+---
+
 ## Tech Stack
 
 | Layer | Technology |

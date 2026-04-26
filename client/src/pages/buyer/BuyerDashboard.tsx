@@ -190,7 +190,7 @@ export default function BuyerDashboard() {
               </CardContent>
             </Card>
 
-            <Button onClick={() => navigate("/products")} className="w-full">
+            <Button onClick={() => navigate("/mall")} className="w-full">
               Continue Shopping
             </Button>
           </TabsContent>
@@ -206,7 +206,7 @@ export default function BuyerDashboard() {
                 <div className="text-center py-8">
                   <Heart className="w-12 h-12 text-slate-300 mx-auto mb-3" />
                   <p className="text-slate-600">You have 8 items saved in your wishlist</p>
-                  <Button onClick={() => navigate("/products")} className="mt-4">
+                  <Button onClick={() => navigate("/mall")} className="mt-4">
                     Browse Products
                   </Button>
                 </div>
