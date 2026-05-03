@@ -16,6 +16,7 @@ type AuthMode = "login" | "signup" | "staff";
 function getRoleRedirect(role: string): string {
   const map: Record<string, string> = {
     admin: "/admin", manager: "/manager", delivery: "/delivery",
+    stock_manager: "/stock-manager", buyer: "/buyer",
     reader: "/affiliate", developer: "/developer",
   };
   return map[role] ?? "/products";

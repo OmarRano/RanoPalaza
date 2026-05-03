@@ -46,6 +46,7 @@ can promote a buyer to "reader" (affiliate) role from the admin dashboard.
 
 ```
 client/src/pages/Auth.tsx          ← Login/Signup UI (3 modes)
+client/src/_core/hooks/useAuth.ts  ← Single auth hook (demo fallback + backend session fetch)
 server/auth.ts                     ← tRPC auth router (me, logout, signupBuyer, loginBuyer, loginStaff)
 server/models/User.ts              ← Mongoose User schema + comparePassword method
 server/mongodb.ts                  ← DB connection + staff seeding
@@ -57,6 +58,19 @@ server/_core/rateLimit.ts          ← Rate limiting middleware
 ---
 
 ## How Authentication Works
+
+### Frontend Auth State (Current Implementation)
+
+There is currently **no `AuthContext.tsx` provider in active use** for session state.
+Authentication on the frontend is managed directly by `useAuth()`.
+
+- In **demo mode** (`VITE_USE_BACKEND_AUTH !== "true"`), `useAuth()` returns a role-based demo user derived from the current pathname.
+- In **backend mode** (`VITE_USE_BACKEND_AUTH === "true"`), `useAuth()` calls:
+  - `GET /api/auth/me` on mount and on `refresh()`
+  - `POST /api/auth/logout` on `logout()`
+- Session auth is cookie-based (**httpOnly cookies**) and is **not persisted in localStorage**.
+
+Any older team note that describes localStorage-based auth or a required `AuthContext.tsx` session provider should be treated as outdated.
 
 ### Sign Up (New Buyer)
 
@@ -282,3 +296,24 @@ node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
 
 8. **Session revocation** — Store a `sessionVersion` counter on the user; embed
    it in the JWT. Increment on password change to invalidate all active sessions.
+
+---
+
+## Optional Migration Plan: Hook-Only Auth → Context Provider
+
+If a context abstraction is still desired, implement it as a thin wrapper over the existing hook logic so session fetching remains centralized.
+
+1. **Extract single source of truth**
+   - Move the backend session state machine (`user`, `loading`, `error`, `refresh`, `logout`) into `useAuthSession()` in `client/src/_core/hooks/useAuth.ts`.
+2. **Keep `useAuth()` API stable**
+   - `useAuth()` should first read from `AuthContext` when available.
+   - If provider is absent, fallback to `useAuthSession()` for backward compatibility.
+3. **Create `AuthProvider`**
+   - `AuthProvider` calls `useAuthSession()` once and provides the value.
+   - This avoids duplicate `GET /api/auth/me` calls when many components use auth.
+4. **Roll out incrementally**
+   - Wrap app root with `AuthProvider`.
+   - Leave component call sites as `useAuth()` with no immediate refactor churn.
+5. **Preserve security model**
+   - Do not store auth session in localStorage.
+   - Keep backend cookie + `/api/auth/me` as the source of truth.

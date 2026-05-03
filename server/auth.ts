@@ -154,7 +154,7 @@ export const authRouter = router({
   /**
    * STAFF LOGIN
    * ─────────────────────────────────────────────────────────────────────────
-   * • For admin, manager, delivery, and developer roles only.
+   * • For admin, manager, stock_manager, delivery, and developer roles only.
    * • Staff accounts are seeded into MongoDB at startup.
    * • Buyer accounts are rejected here — they must use loginBuyer.
    */
@@ -176,7 +176,7 @@ export const authRouter = router({
         throw new Error("Account deactivated. Please contact the administrator.");
       }
 
-      const staffRoles = ["admin", "manager", "delivery", "developer"];
+      const staffRoles = ["admin", "manager", "stock_manager", "delivery", "developer"];
       if (!staffRoles.includes(user.role)) {
         throw new Error("Buyer accounts must use the Shop Account login.");
       }
