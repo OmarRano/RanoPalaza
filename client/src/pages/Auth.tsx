@@ -24,7 +24,7 @@ function getRoleRedirect(role: string): string {
 
 const STAFF_CARDS = [
   { role: "Admin", email: "admin@sahadstores.com", password: "Admin@123456", desc: "Full platform control", icon: Shield, accent: "#ef4444", bg: "rgba(239,68,68,0.08)", border: "rgba(239,68,68,0.2)" },
-  { role: "Stock Manager", email: "manager@sahadstores.com", password: "Manager@123456", desc: "Products & inventory", icon: Settings, accent: "#3b82f6", bg: "rgba(59,130,246,0.08)", border: "rgba(59,130,246,0.2)" },
+  { role: "Stock Manager", email: "stock@sahadstores.com", password: "Stock@123456", desc: "Products & inventory", icon: Settings, accent: "#3b82f6", bg: "rgba(59,130,246,0.08)", border: "rgba(59,130,246,0.2)" },
   { role: "Delivery", email: "delivery@sahadstores.com", password: "Delivery@123456", desc: "Orders & tracking", icon: Truck, accent: "#10b981", bg: "rgba(16,185,129,0.08)", border: "rgba(16,185,129,0.2)" },
   { role: "Developer", email: "developer@sahadstores.com", password: "Developer@123456", desc: "Platform analytics", icon: Code2, accent: "#a855f7", bg: "rgba(168,85,247,0.08)", border: "rgba(168,85,247,0.2)" },
 ] as const;
