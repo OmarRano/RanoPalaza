@@ -6,7 +6,8 @@
  *
  * To switch to production:
  *  1. Wrap protected routes with <ProtectedRoute> again
- *  2. Replace useAuth.ts with the real tRPC-powered version
+ *  2. Keep using useAuth.ts (it already supports backend mode via VITE_USE_BACKEND_AUTH=true)
+ *  3. Optionally add an AuthProvider wrapper later to share one auth query result across the app
  */
 import { Switch, Route, useLocation } from "wouter";
 import { Toaster } from "@/components/ui/sonner";
